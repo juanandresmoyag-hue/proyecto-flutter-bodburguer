@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app_theme.dart';
-
-enum LoginMethod { phone, email }
+import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,19 +13,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _phone = TextEditingController();
-  final _email = TextEditingController();
   final _password = TextEditingController();
-  LoginMethod _method = LoginMethod.phone;
   bool _hidePassword = true;
   bool _rememberDevice = false;
-
-  TextEditingController get _identifier =>
-      _method == LoginMethod.phone ? _phone : _email;
 
   @override
   void dispose() {
     _phone.dispose();
-    _email.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -37,12 +30,18 @@ class _LoginScreenState extends State<LoginScreen> {
       ..showSnackBar(SnackBar(content: Text(text)));
   }
 
+  void _navigateToHome() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+    );
+  }
+
   void _login() {
-    if (_identifier.text.trim().isEmpty || _password.text.isEmpty) {
-      _message('Ingresa tus datos para iniciar sesión.');
+    if (_phone.text.trim().isEmpty || _password.text.isEmpty) {
+      _message('Ingresa tu número de celular y contraseña.');
       return;
     }
-    _message('El inicio de sesión estará disponible próximamente.');
+    _navigateToHome();
   }
 
   void _sendCode() {
@@ -50,7 +49,8 @@ class _LoginScreenState extends State<LoginScreen> {
       _message('Ingresa un número de celular válido.');
       return;
     }
-    _message('Te enviaremos un código por WhatsApp.');
+    _message('Código validado. ¡Bienvenido a Burger King!');
+    _navigateToHome();
   }
 
   @override
@@ -73,9 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 24),
                         _offer(),
                         const SizedBox(height: 28),
-                        _methodSelector(),
-                        const SizedBox(height: 22),
-                        _identifierField(),
+                        _phoneField(),
                         const SizedBox(height: 20),
                         _passwordField(),
                         const SizedBox(height: 20),
@@ -105,35 +103,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _header() => SizedBox(
     height: 72,
-    child: Row(
-      children: [
-        IconButton(
-          tooltip: 'Volver',
-          onPressed: () => Navigator.maybePop(context),
-          icon: const Icon(Icons.arrow_back),
-        ),
-        const Spacer(),
-        const Icon(Icons.local_fire_department, color: AppColors.red),
-        const SizedBox(width: 8),
-        const Text('LOGIN PHONE', style: LoginStyles.header),
-        const Spacer(),
-        IconButton(
-          tooltip: 'Limpiar campos',
-          onPressed: () {
-            _phone.clear();
-            _email.clear();
-            _password.clear();
-          },
-          icon: const Icon(Icons.close),
-        ),
-        const Padding(
-          padding: EdgeInsets.only(right: 20),
-          child: CircleAvatar(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: const [
+          Icon(Icons.local_fire_department, color: AppColors.red, size: 28),
+          SizedBox(width: 8),
+          Text('LOGIN PHONE', style: LoginStyles.header),
+          Spacer(),
+          CircleAvatar(
             backgroundColor: AppColors.red,
             child: Icon(Icons.person_outline, color: Colors.white),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 
@@ -149,10 +132,10 @@ class _LoginScreenState extends State<LoginScreen> {
           flex: 6,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('🔥  PERÚ A LA PARRILLA', style: LoginStyles.kicker),
-              const SizedBox(height: 14),
-              const Text.rich(
+            children: const [
+              Text('🔥  PERÚ A LA PARRILLA', style: LoginStyles.kicker),
+              SizedBox(height: 14),
+              Text.rich(
                 TextSpan(
                   style: LoginStyles.heroTitle,
                   children: [
@@ -161,8 +144,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
+              SizedBox(height: 8),
+              Text(
                 'Tus cupones, coronas y pedidos express en un solo lugar.',
                 style: LoginStyles.heroDescription,
               ),
@@ -214,79 +197,41 @@ class _LoginScreenState extends State<LoginScreen> {
     ),
   );
 
-  Widget _methodSelector() => Container(
-    padding: const EdgeInsets.all(5),
-    decoration: BoxDecoration(
-      color: AppColors.beige,
-      borderRadius: BorderRadius.circular(32),
-    ),
-    child: Row(
-      children: [
-        _methodOption(LoginMethod.phone, Icons.phone_iphone, 'Celular'),
-        _methodOption(LoginMethod.email, Icons.mail_outline, 'Correo'),
-      ],
-    ),
-  );
-
-  Widget _methodOption(LoginMethod method, IconData icon, String label) {
-    final selected = _method == method;
-    return Expanded(
-      child: TextButton.icon(
-        onPressed: () => setState(() => _method = method),
-        icon: Icon(icon),
-        label: Text(label),
-        style: LoginStyles.methodButton(selected),
+  Widget _phoneField() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: const [
+          Text('Número de celular', style: LoginStyles.sectionTitle),
+          Spacer(),
+          Text('Vía SMS / WhatsApp'),
+        ],
       ),
-    );
-  }
-
-  Widget _identifierField() {
-    final isPhone = _method == LoginMethod.phone;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              isPhone ? 'Número de celular' : 'Correo electrónico',
-              style: LoginStyles.sectionTitle,
-            ),
-            const Spacer(),
-            if (isPhone) const Text('Vía SMS / WhatsApp'),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            if (isPhone) ...[
-              const Text('🇵🇪  +51'),
-              const SizedBox(width: 12),
-            ],
-            Expanded(
-              child: TextField(
-                controller: _identifier,
-                keyboardType: isPhone
-                    ? TextInputType.phone
-                    : TextInputType.emailAddress,
-                inputFormatters: isPhone
-                    ? [FilteringTextInputFormatter.digitsOnly]
-                    : null,
-                decoration: LoginStyles.input(
-                  hint: isPhone ? '987 654 321' : 'tucorreo@ejemplo.com',
-                  prefix: isPhone ? null : const Icon(Icons.mail_outline),
-                  suffix: IconButton(
-                    tooltip: 'Borrar',
-                    onPressed: _identifier.clear,
-                    icon: const Icon(Icons.close),
-                  ),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          const Text('🇵🇪  +51'),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: LoginStyles.input(
+                hint: '987 654 321',
+                prefix: const Icon(Icons.phone_iphone),
+                suffix: IconButton(
+                  tooltip: 'Borrar',
+                  onPressed: _phone.clear,
+                  icon: const Icon(Icons.close),
                 ),
               ),
             ),
-          ],
-        ),
-      ],
-    );
-  }
+          ),
+        ],
+      ),
+    ],
+  );
 
   Widget _passwordField() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,13 +322,13 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           Expanded(
             child: _socialButton('Google', 'G', () {
-              _message('Inicio de sesión con Google próximamente.');
+              _navigateToHome();
             }),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: _socialButton('Apple', '', () {
-              _message('Inicio de sesión con Apple próximamente.');
+              _navigateToHome();
             }),
           ),
         ],
@@ -408,7 +353,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
   Widget _guestButton() => ElevatedButton.icon(
-    onPressed: () => _message('Puedes explorar el menú como invitado.'),
+    onPressed: _navigateToHome,
     icon: const Icon(Icons.storefront_outlined),
     label: const Text('Pedir rápido como invitado'),
     style: LoginStyles.guestButton,
@@ -429,18 +374,18 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _termsText() => Text.rich(
     TextSpan(
       style: LoginStyles.terms,
-      children: [
-        const TextSpan(text: 'Al ingresar confirmas que aceptas nuestros '),
-        const TextSpan(
+      children: const [
+        TextSpan(text: 'Al ingresar confirmas que aceptas nuestros '),
+        TextSpan(
           text: 'Términos y Condiciones',
           style: LoginStyles.legalLink,
         ),
-        const TextSpan(text: ' y la '),
-        const TextSpan(
+        TextSpan(text: ' y la '),
+        TextSpan(
           text: 'Política de Privacidad',
           style: LoginStyles.legalLink,
         ),
-        const TextSpan(text: ' de Burger King Perú.'),
+        TextSpan(text: ' de Burger King Perú.'),
       ],
     ),
     textAlign: TextAlign.center,
