@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app_theme.dart';
+import 'home_screen.dart';
 
 enum LoginMethod { phone, email }
 
@@ -38,11 +39,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _login() {
-    if (_identifier.text.trim().isEmpty || _password.text.isEmpty) {
-      _message('Ingresa tus datos para iniciar sesión.');
-      return;
-    }
-    _message('El inicio de sesión estará disponible próximamente.');
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+    );
   }
 
   void _sendCode() {
@@ -408,7 +407,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
   Widget _guestButton() => ElevatedButton.icon(
-    onPressed: () => _message('Puedes explorar el menú como invitado.'),
+    onPressed: _login,
     icon: const Icon(Icons.storefront_outlined),
     label: const Text('Pedir rápido como invitado'),
     style: LoginStyles.guestButton,
