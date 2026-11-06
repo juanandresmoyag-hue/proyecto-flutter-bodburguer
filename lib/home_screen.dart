@@ -1,7 +1,9 @@
+import 'menu_screen.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int initialNavIndex;
+  const HomeScreen({super.key, this.initialNavIndex = 1});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -10,8 +12,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedOrderMode = 0; // 0: Delivery, 1: Para Llevar, 2: Auto-King
   int _selectedCategory = 0;
-  int _currentNavIndex = 0;
+  late int _currentNavIndex;
   double _cartTotal = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentNavIndex = widget.initialNavIndex;
+  }
 
   final List<Map<String, dynamic>> _categories = [
     {'name': 'Lo + Pedido', 'icon': Icons.local_fire_department, 'active': true},
@@ -100,6 +108,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_currentNavIndex == 1) {
+      return MenuScreen(
+        onNavigateToHome: () => setState(() => _currentNavIndex = 0),
+        onNavigateToCoupons: () => setState(() => _currentNavIndex = 2),
+        onNavigateToRewards: () => setState(() => _currentNavIndex = 3),
+      );
+    }
+
     final isDesktop = MediaQuery.of(context).size.width >= 800;
 
     return Scaffold(

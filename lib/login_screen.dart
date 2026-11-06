@@ -40,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _login() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      MaterialPageRoute(builder: (_) => const HomeScreen(initialNavIndex: 1)),
     );
   }
 
