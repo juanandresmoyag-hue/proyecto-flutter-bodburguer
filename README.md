@@ -7,6 +7,10 @@ Aplicación Flutter con una pantalla de inicio de sesión para Burger King Perú
 - `lib/main.dart`: inicia la aplicación.
 - `lib/app_theme.dart`: contiene los colores y estilos compartidos.
 - `lib/login_screen.dart`: contiene la pantalla y sus interacciones.
+- `lib/promotions_screen.dart`: muestra la sección de cupones, recompensas y
+  promociones, con filtros, favoritos y canje de demostración.
+- `assets/promotions/`: fotografías de muestra de Unsplash para las tarjetas;
+  no son imágenes oficiales del restaurante.
 
 ## Ejecutar
 
@@ -28,4 +32,8 @@ flutter run
 
 La pantalla permite alternar entre ingreso con celular y correo, mostrar u
 ocultar la clave, activar el recordatorio del dispositivo y explorar las
-opciones de acceso rápido y como invitado.
+opciones de acceso rápido y como invitado. El ingreso es una demostración:
+cualquier celular o correo y contraseña no vacíos abren la sección de
+promociones; no hay autenticación conectada a un servidor todavía.
+Los cupones, las recompensas, el canje y la validación del código
+`PERU-BK-7749` son demostrativos y no aplican descuentos reales.

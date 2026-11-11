@@ -9,10 +9,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  url_launcher: ^6.3.3
 
 dev_dependencies:
+  flutter_test:
+    sdk: flutter
   lints: ^6.0.0
   test: ^1.25.6
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/promotions/
