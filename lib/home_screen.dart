@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'profile_screen.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -14,7 +16,11 @@ class _HomeScreenState extends State<HomeScreen> {
   double _cartTotal = 0.0;
 
   final List<Map<String, dynamic>> _categories = [
-    {'name': 'Lo + Pedido', 'icon': Icons.local_fire_department, 'active': true},
+    {
+      'name': 'Lo + Pedido',
+      'icon': Icons.local_fire_department,
+      'active': true,
+    },
     {'name': 'Whopper®', 'icon': Icons.lunch_dining, 'active': false},
     {'name': 'Pollo Crispy', 'icon': Icons.kebab_dining, 'active': false},
     {'name': 'Snacks', 'icon': Icons.fastfood, 'active': false},
@@ -30,8 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'desc': '4 Whoppers + 2 Papas Medianas + 10 Nuggets crocantes + Bebidas',
       'price': 49.90,
       'oldPrice': 76.90,
-      'image':
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuCnkZbKscc3NJrN4HaFX9X5bfce7lTP1uuRTywEJobuMW43IPNiEBlo_mdgouM8dpksmVr8fRADR2c25tQpWMK-vVE21y8UX8ULr5Ny46XXEH_m5dB5hy6GTMW0A1jURgj0FneAKD-vBQ81qn3P_woEBaBfaQIEMuCy51Uyyg8RBKFW8V-bC_aIMWn-wd7dJqK2KdapLSKI0Uraml-7kw5UvII6KIDIRl-fQfTR4bRs',
+      'image': 'https://lh3.googleusercontent.com/aida-public/AB6AXuCnkZbKscc3NJrN4HaFX9X5bfce7lTP1uuRTywEJobuMW43IPNiEBlo_mdgouM8dpksmVr8fRADR2c25tQpWMK-vVE21y8UX8ULr5Ny46XXEH_m5dB5hy6GTMW0A1jURgj0FneAKD-vBQ81qn3P_woEBaBfaQIEMuCy51Uyyg8RBKFW8V-bC_aIMWn-wd7dJqK2KdapLSKI0Uraml-7kw5UvII6KIDIRl-fQfTR4bRs',
     },
     {
       'badge': '2x1 DUO',
@@ -40,8 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'desc': 'Dos crujientes sándwiches King de pechuga empanizada y mayonesa',
       'price': 18.50,
       'oldPrice': 29.00,
-      'image':
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuC_gqUlwfs34i3U8jFnvRgfu7gDUgZPWb3vCZ3H039KzmdcBuBc1Htr6QwYgEgN0Jwgxz2Pxbxr8_fPBZ04Gm7pIt27Eh5H30VuXQjbEr2BUGwrBN818fTAdTIKfns2CAKaZxGezuBzVAb52eqT15kGHAZ181-2syoS5W7ITavBsOYGtDe4p5wZs7LLTa-VpNkQlKhzUJR_1zW3AfgnMV1NYgt-LmEinW0RFViVRDbD',
+      'image': 'https://lh3.googleusercontent.com/aida-public/AB6AXuC_gqUlwfs34i3U8jFnvRgfu7gDUgZPWb3vCZ3H039KzmdcBuBc1Htr6QwYgEgN0Jwgxz2Pxbxr8_fPBZ04Gm7pIt27Eh5H30VuXQjbEr2BUGwrBN818fTAdTIKfns2CAKaZxGezuBzVAb52eqT15kGHAZ181-2syoS5W7ITavBsOYGtDe4p5wZs7LLTa-VpNkQlKhzUJR_1zW3AfgnMV1NYgt-LmEinW0RFViVRDbD',
     },
     {
       'badge': '-25% OFF',
@@ -50,8 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'desc': 'Doble carne a la parrilla, salsa Stacker secreta y mucho tocino',
       'price': 23.90,
       'oldPrice': 31.90,
-      'image':
-          'https://lh3.googleusercontent.com/aida-public/AB6AXuA3kM3Xzz89C_pxhScBmHMt75W77wFErzhJJE1yjHYOg7OX0LWYFIfP4KEsuXV9OOAf2jAgsy2hkCSq0fVz8Ut0tHrJHgFKq-6ryx85Hj3dlHujY9tppBaLygiK2UQNBq_eprcKbFyK-wEdW-1RuaIqgSD-1KZvW30pYmVtkdzzN97DK-Dky0bQEtP1dDK9p3KxkregxBQXevLJP7g128_5e05HS2aGMJR5cd9Sf1f5',
+      'image': 'https://lh3.googleusercontent.com/aida-public/AB6AXuA3kM3Xzz89C_pxhScBmHMt75W77wFErzhJJE1yjHYOg7OX0LWYFIfP4KEsuXV9OOAf2jAgsy2hkCSq0fVz8Ut0tHrJHgFKq-6ryx85Hj3dlHujY9tppBaLygiK2UQNBq_eprcKbFyK-wEdW-1RuaIqgSD-1KZvW30pYmVtkdzzN97DK-Dky0bQEtP1dDK9p3KxkregxBQXevLJP7g128_5e05HS2aGMJR5cd9Sf1f5',
     },
   ];
 
@@ -64,7 +67,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ..showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
           backgroundColor: const Color(0xFF353026),
           content: Row(
             children: [
@@ -73,11 +78,17 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: Text(
                   '¡$product agregado!',
-                  style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFD62300),
                   borderRadius: BorderRadius.circular(16),
@@ -188,7 +199,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(20),
                     onTap: () {},
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 4,
+                        horizontal: 8,
+                      ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,7 +210,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: const [
-                              Icon(Icons.location_on, color: Color(0xFFD62300), size: 16),
+                              Icon(
+                                Icons.location_on,
+                                color: Color(0xFFD62300),
+                                size: 16,
+                              ),
                               SizedBox(width: 4),
                               Flexible(
                                 child: Text(
@@ -209,13 +227,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              Icon(Icons.expand_more, size: 16, color: Color(0xFF5D403A)),
+                              Icon(
+                                Icons.expand_more,
+                                size: 16,
+                                color: Color(0xFF5D403A),
+                              ),
                             ],
                           ),
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: const [
-                              Icon(Icons.schedule, size: 12, color: Color(0xFF8F6600)),
+                              Icon(
+                                Icons.schedule,
+                                size: 12,
+                                color: Color(0xFF8F6600),
+                              ),
                               SizedBox(width: 3),
                               Text(
                                 '25-35 min',
@@ -235,7 +261,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 // Coronas Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
@@ -249,7 +278,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: Row(
                     children: const [
-                      Icon(Icons.workspace_premium, color: Color(0xFFFFBB1E), size: 16),
+                      Icon(
+                        Icons.workspace_premium,
+                        color: Color(0xFFFFBB1E),
+                        size: 16,
+                      ),
                       SizedBox(width: 4),
                       Text(
                         '450',
@@ -265,10 +298,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(width: 8),
 
                 // Avatar de perfil
-                const CircleAvatar(
-                  radius: 17,
-                  backgroundImage: NetworkImage(
-                    'https://lh3.googleusercontent.com/aida-public/AB6AXuCeC5OFF2oyxuGIzaBxy61vamTMVa20Lahm3ewg-YsQo6qCY2yo_4VpsTErcPpBIeO0CBdU7pjoqimrFJzBA-YMHAtN9CJrj3Z1047EBBliyk2yv5qJo0djv5gsdPKRwvBd-Aq1306V5VEHY1izfxkJxfQKwM4YOU8unoCMDcATB_9KGITi57axB7M7yrvo3GkpX48yn9sHvX19Grc-rI7a940_wTYe20PDFE2npVVm',
+                IconButton(
+                  tooltip: 'Mi perfil',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const ProfileScreen(),
+                    ),
+                  ),
+                  icon: const CircleAvatar(
+                    radius: 17,
+                    backgroundImage: NetworkImage(
+                      'https://lh3.googleusercontent.com/aida-public/AB6AXuCeC5OFF2oyxuGIzaBxy61vamTMVa20Lahm3ewg-YsQo6qCY2yo_4VpsTErcPpBIeO0CBdU7pjoqimrFJzBA-YMHAtN9CJrj3Z1047EBBliyk2yv5qJo0djv5gsdPKRwvBd-Aq1306V5VEHY1izfxkJxfQKwM4YOU8unoCMDcATB_9KGITi57axB7M7yrvo3GkpX48yn9sHvX19Grc-rI7a940_wTYe20PDFE2npVVm',
+                    ),
                   ),
                 ),
               ],
@@ -328,7 +369,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color: isSelected ? const Color(0xFFA91A00) : const Color(0xFF5D403A),
+                  color: isSelected
+                      ? const Color(0xFFA91A00)
+                      : const Color(0xFF5D403A),
                 ),
               ),
             ],
@@ -377,7 +420,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFFDEA7),
                           borderRadius: BorderRadius.circular(20),
@@ -395,7 +441,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 8),
                       Row(
                         children: const [
-                          Icon(Icons.local_fire_department, color: Color(0xFFFFDEA7), size: 14),
+                          Icon(
+                            Icons.local_fire_department,
+                            color: Color(0xFFFFDEA7),
+                            size: 14,
+                          ),
                           SizedBox(width: 2),
                           Text(
                             '-31% DCTO',
@@ -458,7 +508,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       ElevatedButton.icon(
-                        onPressed: () => _addToCart('Mega Promo Whopper Doble', 19.90),
+                        onPressed: () =>
+                            _addToCart('Mega Promo Whopper Doble', 19.90),
                         icon: const SizedBox.shrink(),
                         label: Row(
                           children: const [
@@ -471,12 +522,19 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             SizedBox(width: 6),
-                            Icon(Icons.arrow_forward, size: 16, color: Color(0xFFA91A00)),
+                            Icon(
+                              Icons.arrow_forward,
+                              size: 16,
+                              color: Color(0xFFA91A00),
+                            ),
                           ],
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 12,
+                          ),
                           shape: const StadiumBorder(),
                           elevation: 3,
                         ),
@@ -488,7 +546,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           width: 105,
                           height: 75,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.fastfood, size: 60, color: Colors.white70),
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.fastfood,
+                            size: 60,
+                            color: Colors.white70,
+                          ),
                         ),
                       ),
                     ],
@@ -528,7 +590,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Color(0xFFFFDEA7),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.workspace_premium, color: Color(0xFF704F00), size: 26),
+                child: const Icon(
+                  Icons.workspace_premium,
+                  color: Color(0xFF704F00),
+                  size: 26,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -547,7 +613,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFDEA7),
                             borderRadius: BorderRadius.circular(6),
@@ -566,12 +635,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 2),
                     const Text.rich(
                       TextSpan(
-                        style: TextStyle(fontSize: 12, color: Color(0xFF5D403A)),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF5D403A),
+                        ),
                         children: [
                           TextSpan(text: 'Te faltan '),
                           TextSpan(
                             text: '50 coronas',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFA91A00)),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFA91A00),
+                            ),
                           ),
                           TextSpan(text: ' para un Whopper Jr. gratis'),
                         ],
@@ -593,7 +668,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   Text(
                     'PTS',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF5D403A)),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF5D403A),
+                    ),
                   ),
                 ],
               ),
@@ -605,11 +684,19 @@ class _HomeScreenState extends State<HomeScreen> {
             children: const [
               Text(
                 'Progreso: 450 / 500',
-                style: TextStyle(fontSize: 11, color: Color(0xFF5D403A), fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF5D403A),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Text(
                 '90% completado',
-                style: TextStyle(fontSize: 11, color: Color(0xFF704F00), fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF704F00),
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ],
           ),
@@ -620,7 +707,9 @@ class _HomeScreenState extends State<HomeScreen> {
               value: 0.9,
               minHeight: 10,
               backgroundColor: const Color(0xFFEBE1D2),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFFBB1E)),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Color(0xFFFFBB1E),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -649,7 +738,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Color(0xFFA91A00),
                       ),
                     ),
-                    Icon(Icons.chevron_right, size: 16, color: Color(0xFFA91A00)),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 16,
+                      color: Color(0xFFA91A00),
+                    ),
                   ],
                 ),
               ),
@@ -670,7 +763,11 @@ class _HomeScreenState extends State<HomeScreen> {
           children: const [
             Text(
               'Explora el Menú',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1F1B12)),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1F1B12),
+              ),
             ),
             Text(
               'Todo a la parrilla',
@@ -686,7 +783,9 @@ class _HomeScreenState extends State<HomeScreen> {
               final cat = _categories[index];
               final isSelected = _selectedCategory == index;
               return Padding(
-                padding: EdgeInsets.only(right: index == _categories.length - 1 ? 0 : 14),
+                padding: EdgeInsets.only(
+                  right: index == _categories.length - 1 ? 0 : 14,
+                ),
                 child: GestureDetector(
                   onTap: () => setState(() => _selectedCategory = index),
                   child: Column(
@@ -696,24 +795,33 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: 58,
                         height: 58,
                         decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFFA91A00) : Colors.white,
+                          color: isSelected
+                              ? const Color(0xFFA91A00)
+                              : Colors.white,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
                               color: isSelected
-                                  ? const Color(0xFFA91A00).withValues(alpha: 0.3)
-                                  : const Color(0xFF502314).withValues(alpha: 0.06),
+                                  ? const Color(0xFFA91A00)
+                                        .withValues(alpha: 0.3)
+                                  : const Color(0xFF502314)
+                                        .withValues(alpha: 0.06),
                               blurRadius: 8,
                               offset: const Offset(0, 3),
                             ),
                           ],
                           border: isSelected
-                              ? Border.all(color: const Color(0xFFFFDAD3), width: 3)
+                              ? Border.all(
+                                  color: const Color(0xFFFFDAD3),
+                                  width: 3,
+                                )
                               : null,
                         ),
                         child: Icon(
                           cat['icon'] as IconData,
-                          color: isSelected ? Colors.white : const Color(0xFF88503E),
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF88503E),
                           size: 26,
                         ),
                       ),
@@ -722,8 +830,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         cat['name'] as String,
                         style: TextStyle(
                           fontSize: 11,
-                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                          color: isSelected ? const Color(0xFFA91A00) : const Color(0xFF1F1B12),
+                          fontWeight: isSelected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                          color: isSelected
+                              ? const Color(0xFFA91A00)
+                              : const Color(0xFF1F1B12),
                         ),
                       ),
                     ],
@@ -749,25 +861,40 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 const Text(
                   'Ofertas de la App',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1F1B12)),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1F1B12),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFA91A00),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(
                     'Fuego BK',
-                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
             ),
             const Text(
               'Ver todas (6)',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFFA91A00)),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFFA91A00),
+              ),
             ),
           ],
         ),
@@ -777,12 +904,14 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: _offers
-                .map((offer) => Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: _buildOfferCard(offer),
-                      ),
-                    ))
+                .map(
+                  (offer) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: _buildOfferCard(offer),
+                    ),
+                  ),
+                )
                 .toList(),
           )
         else
@@ -791,11 +920,13 @@ class _HomeScreenState extends State<HomeScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: _offers
-                  .map((offer) => Container(
-                        width: 260,
-                        margin: const EdgeInsets.only(right: 14),
-                        child: _buildOfferCard(offer),
-                      ))
+                  .map(
+                    (offer) => Container(
+                      width: 260,
+                      margin: const EdgeInsets.only(right: 14),
+                      child: _buildOfferCard(offer),
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -832,7 +963,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   errorBuilder: (_, __, ___) => Container(
                     height: 120,
                     color: const Color(0xFFF1E7D8),
-                    child: const Center(child: Icon(Icons.fastfood, size: 40, color: Color(0xFF88503E))),
+                    child: const Center(
+                      child: Icon(
+                        Icons.fastfood,
+                        size: 40,
+                        color: Color(0xFF88503E),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -840,7 +977,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 top: 8,
                 left: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: offer['badgeColor'] as Color,
                     borderRadius: BorderRadius.circular(12),
@@ -905,7 +1045,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               GestureDetector(
-                onTap: () => _addToCart(offer['title'] as String, offer['price'] as double),
+                onTap: () => _addToCart(
+                  offer['title'] as String,
+                  offer['price'] as double,
+                ),
                 child: Container(
                   width: 36,
                   height: 36,
@@ -933,7 +1076,11 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             const Text(
               'Tus Favoritos Recientes',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1F1B12)),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1F1B12),
+              ),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -943,7 +1090,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: const Text(
                 'Reordena en 1-tap',
-                style: TextStyle(fontSize: 10, color: Color(0xFF5D403A), fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Color(0xFF5D403A),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -987,7 +1138,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF7EDDE),
                             borderRadius: BorderRadius.circular(6),
@@ -1004,14 +1158,21 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(width: 6),
                         const Text(
                           'Hace 3 días',
-                          style: TextStyle(fontSize: 10, color: Color(0xFF5D403A)),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF5D403A),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 3),
                     const Text(
                       'Whopper Clásica',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF1F1B12)),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1F1B12),
+                      ),
                     ),
                     const Text(
                       'Sin cebolla • Extra queso cheddar • Bebida Zero',
@@ -1022,22 +1183,38 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 4),
                     const Text(
                       'S/ 21.50',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFFA91A00)),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFA91A00),
+                      ),
                     ),
                   ],
                 ),
               ),
               ElevatedButton.icon(
-                onPressed: () => _addToCart('Whopper Clásica Reordenada', 21.50),
-                icon: const Icon(Icons.replay, size: 14, color: Color(0xFF271900)),
+                onPressed: () =>
+                    _addToCart('Whopper Clásica Reordenada', 21.50),
+                icon: const Icon(
+                  Icons.replay,
+                  size: 14,
+                  color: Color(0xFF271900),
+                ),
                 label: const Text(
                   'Reordenar',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF271900)),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF271900),
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFFDEA7),
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   shape: const StadiumBorder(),
                 ),
               ),
@@ -1065,7 +1242,11 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Color(0xFF88503E),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.outdoor_grill, color: Color(0xFFFFDEA7), size: 28),
+            child: const Icon(
+              Icons.outdoor_grill,
+              color: Color(0xFFFFDEA7),
+              size: 28,
+            ),
           ),
           const SizedBox(width: 14),
           const Expanded(
@@ -1118,7 +1299,11 @@ class _HomeScreenState extends State<HomeScreen> {
               children: const [
                 Text(
                   'BK Benavides Miraflores',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1F1B12)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1F1B12),
+                  ),
                 ),
                 Text(
                   'Abierto hoy hasta las 11:30 PM',
@@ -1176,12 +1361,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Carrito con S/ ${_cartTotal.toStringAsFixed(2)}'),
+                      content: Text(
+                        'Carrito con S/ ${_cartTotal.toStringAsFixed(2)}',
+                      ),
                     ),
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFA91A00),
                     borderRadius: BorderRadius.circular(25),
@@ -1195,7 +1385,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.shopping_bag, color: Colors.white, size: 16),
+                      const Icon(
+                        Icons.shopping_bag,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'S/ ${_cartTotal.toStringAsFixed(2)}',
@@ -1226,7 +1420,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Icon(
             icon,
             size: 22,
-            color: isSelected ? const Color(0xFFA91A00) : const Color(0xFF5D403A),
+            color: isSelected
+                ? const Color(0xFFA91A00)
+                : const Color(0xFF5D403A),
           ),
           const SizedBox(height: 2),
           Text(
@@ -1234,7 +1430,9 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-              color: isSelected ? const Color(0xFFA91A00) : const Color(0xFF5D403A),
+              color: isSelected
+                  ? const Color(0xFFA91A00)
+                  : const Color(0xFF5D403A),
             ),
           ),
         ],
@@ -1255,20 +1453,29 @@ class _HomeScreenState extends State<HomeScreen> {
               Icon(
                 Icons.local_offer,
                 size: 22,
-                color: isSelected ? const Color(0xFFA91A00) : const Color(0xFF5D403A),
+                color: isSelected
+                    ? const Color(0xFFA91A00)
+                    : const Color(0xFF5D403A),
               ),
               Positioned(
                 top: -3,
                 right: -6,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFA91A00),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Text(
                     '🔥6',
-                    style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -1280,7 +1487,9 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-              color: isSelected ? const Color(0xFFA91A00) : const Color(0xFF5D403A),
+              color: isSelected
+                  ? const Color(0xFFA91A00)
+                  : const Color(0xFF5D403A),
             ),
           ),
         ],

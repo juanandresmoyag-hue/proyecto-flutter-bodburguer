@@ -127,3 +127,33 @@ class LoginStyles {
     Widget? suffix,
   }) => InputDecoration(hintText: hint, prefixIcon: prefix, suffixIcon: suffix);
 }
+
+/// Scoped styles for profile forms; existing login and home keep their theme.
+class ProfileStyles {
+  static InputDecoration input(String label, {Widget? suffix}) =>
+      InputDecoration(
+        labelText: label,
+        alignLabelWithHint: true,
+        suffixIcon: suffix,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 18,
+        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: AppColors.beige),
+        ),
+        errorMaxLines: 3,
+      );
+
+  static ButtonStyle get primaryButton => LoginStyles.redButton.copyWith(
+    minimumSize: const WidgetStatePropertyAll(Size(0, 52)),
+    padding: const WidgetStatePropertyAll(
+      EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+    ),
+    textStyle: const WidgetStatePropertyAll(
+      TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+    ),
+  );
+}
