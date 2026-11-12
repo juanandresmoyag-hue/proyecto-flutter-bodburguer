@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:bod_burguer/home_screen.dart';
 import 'package:bod_burguer/main.dart';
 import 'package:bod_burguer/promotions_screen.dart';
+import 'package:bod_burguer/restaurant_map_view.dart';
+
+import 'support/network_images.dart';
 
 void main() {
   testWidgets('guest can browse coupons and save a favorite', (tester) async {
@@ -68,5 +72,37 @@ void main() {
   testWidgets('app loads login screen', (tester) async {
     await tester.pumpWidget(const BodBurguerApp());
     expect(find.text('INICIAR SESIÓN'), findsOneWidget);
+  });
+
+  testWidgets('login opens home and home links to coupons', (tester) async {
+    await withLocalNetworkImages(() async {
+      await tester.binding.setSurfaceSize(const Size(1000, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(const BodBurguerApp());
+      await tester.enterText(find.byType(TextField).first, '999999999');
+      await tester.enterText(find.byType(TextField).last, 'password');
+      await tester.ensureVisible(find.text('INICIAR SESIÓN'));
+      await tester.tap(find.text('INICIAR SESIÓN'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(HomeScreen), findsOneWidget);
+      await tester.tap(find.text('Cupones'));
+      await tester.pumpAndSettle();
+      expect(find.byType(PromotionsScreen), findsOneWidget);
+    });
+  });
+
+  testWidgets('home opens restaurant map from change location', (tester) async {
+    await withLocalNetworkImages(() async {
+      await tester.binding.setSurfaceSize(const Size(1000, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+      await tester.ensureVisible(find.text('Cambiar'));
+      await tester.tap(find.text('Cambiar'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RestaurantMapView), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

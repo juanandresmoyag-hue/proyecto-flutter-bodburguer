@@ -16,6 +16,10 @@ analyzer:
     - build/**
     - web/**
     - windows/**
+    - android/**
+    - ios/**
+    - linux/**
+    - macos/**
 include: package:lints/recommended.yaml
 
 # Uncomment the following section to specify additional rules.

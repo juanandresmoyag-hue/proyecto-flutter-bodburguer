@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'promotions_screen.dart';
 import 'profile_screen.dart';
+import 'restaurant_map_view.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -546,7 +548,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           width: 105,
                           height: 75,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
+                          errorBuilder: (_, _, _) => const Icon(
                             Icons.fastfood,
                             size: 60,
                             color: Colors.white70,
@@ -960,7 +962,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 120,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  errorBuilder: (_, _, _) => Container(
                     height: 120,
                     color: const Color(0xFFF1E7D8),
                     child: const Center(
@@ -1122,7 +1124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 70,
                   height: 70,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  errorBuilder: (_, _, _) => Container(
                     width: 70,
                     height: 70,
                     color: const Color(0xFFF1E7D8),
@@ -1313,7 +1315,14 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           TextButton(
-            onPressed: () {},
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => Scaffold(
+                  appBar: AppBar(title: const Text('Encuentra tu restaurante')),
+                  body: const SafeArea(child: RestaurantMapView()),
+                ),
+              ),
+            ),
             style: TextButton.styleFrom(
               backgroundColor: const Color(0xFFFFDAD3),
               shape: const StadiumBorder(),
@@ -1443,7 +1452,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildNavCouponItem(int index, String label) {
     final isSelected = _currentNavIndex == index;
     return InkWell(
-      onTap: () => setState(() => _currentNavIndex = index),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const PromotionsScreen()),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
