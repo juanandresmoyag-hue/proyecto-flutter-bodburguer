@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import 'app_theme.dart';
 import 'promotions_screen.dart';
+import 'home_screen.dart';
+import 'register_screen.dart';
 
 enum LoginMethod { phone, email }
 
@@ -43,7 +45,9 @@ class _LoginScreenState extends State<LoginScreen> {
       _message('Ingresa tus datos para iniciar sesión.');
       return;
     }
-    _openPromotions();
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
+    );
   }
 
   void _openPromotions() {
@@ -427,7 +431,9 @@ class _LoginScreenState extends State<LoginScreen> {
     children: [
       const Text('¿Aún no tienes cuenta? '),
       TextButton(
-        onPressed: () => _message('El registro estará disponible pronto.'),
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const RegisterScreen()),
+        ),
         child: const Text('Regístrate aquí'),
       ),
     ],

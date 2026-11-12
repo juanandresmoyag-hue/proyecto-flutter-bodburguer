@@ -15,6 +15,7 @@ analyzer:
   exclude:
     - build/**
     - web/**
+    - windows/**
 include: package:lints/recommended.yaml
 
 # Uncomment the following section to specify additional rules.

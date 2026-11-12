@@ -64,4 +64,9 @@ void main() {
     expect(find.text('Ingresa tus datos para iniciar sesión.'), findsOneWidget);
     expect(find.byType(PromotionsScreen), findsNothing);
   });
+
+  testWidgets('app loads login screen', (tester) async {
+    await tester.pumpWidget(const BodBurguerApp());
+    expect(find.text('INICIAR SESIÓN'), findsOneWidget);
+  });
 }
