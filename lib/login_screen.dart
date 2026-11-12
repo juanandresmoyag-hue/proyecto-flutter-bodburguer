@@ -3,13 +3,18 @@ import 'package:flutter/services.dart';
 
 import 'app_theme.dart';
 import 'promotions_screen.dart';
-import 'home_screen.dart';
 import 'register_screen.dart';
+import 'services/account_service.dart';
 
 enum LoginMethod { phone, email }
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({
+    super.key,
+    this.accountService = const FirebaseAccountService(),
+  });
+
+  final AccountService accountService;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -19,12 +24,32 @@ class _LoginScreenState extends State<LoginScreen> {
   final _phone = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
-  LoginMethod _method = LoginMethod.phone;
+  LoginMethod _method = LoginMethod.email;
   bool _hidePassword = true;
   bool _rememberDevice = false;
+  bool _isBusy = false;
 
   TextEditingController get _identifier =>
       _method == LoginMethod.phone ? _phone : _email;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberedEmail();
+  }
+
+  Future<void> _loadRememberedEmail() async {
+    try {
+      final email = await widget.accountService.loadRememberedEmail();
+      if (!mounted || email == null) return;
+      setState(() {
+        _email.text = email;
+        _rememberDevice = true;
+      });
+    } on AccountServiceException catch (error) {
+      if (mounted) _message(error.message);
+    }
+  }
 
   @override
   void dispose() {
@@ -40,14 +65,38 @@ class _LoginScreenState extends State<LoginScreen> {
       ..showSnackBar(SnackBar(content: Text(text)));
   }
 
-  void _login() {
-    if (_identifier.text.trim().isEmpty || _password.text.isEmpty) {
+  Future<void> _login() async {
+    if (_method == LoginMethod.phone) {
+      _message(
+        'El acceso habilitado es con correo y contraseña. '
+        'El ingreso por SMS aún no está configurado.',
+      );
+      return;
+    }
+    if (_email.text.trim().isEmpty || _password.text.isEmpty) {
       _message('Ingresa tus datos para iniciar sesión.');
       return;
     }
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
-    );
+    setState(() => _isBusy = true);
+    try {
+      await widget.accountService.signIn(
+        email: _email.text.trim(),
+        password: _password.text,
+      );
+      try {
+        await widget.accountService.rememberEmail(
+          _rememberDevice ? _email.text.trim() : null,
+        );
+      } on AccountServiceException {
+        if (mounted) {
+          _message('La sesión inició, pero no se pudo recordar el correo.');
+        }
+      }
+    } on AccountServiceException catch (error) {
+      if (mounted) _message(error.message);
+    } finally {
+      if (mounted) setState(() => _isBusy = false);
+    }
   }
 
   void _openPromotions() {
@@ -56,12 +105,20 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _sendCode() {
-    if (_phone.text.trim().length < 7) {
-      _message('Ingresa un número de celular válido.');
+  Future<void> _sendPasswordReset() async {
+    final email = _email.text.trim();
+    if (email.isEmpty) {
+      _message('Escribe tu correo para enviarte el enlace de recuperación.');
       return;
     }
-    _message('Te enviaremos un código por WhatsApp.');
+    try {
+      await widget.accountService.sendPasswordReset(email);
+      if (mounted) {
+        _message('Te enviamos un enlace para restablecer la contraseña.');
+      }
+    } on AccountServiceException catch (error) {
+      if (mounted) _message(error.message);
+    }
   }
 
   @override
@@ -80,6 +137,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (!widget.accountService.isConfigured) ...[
+                          _firebaseConfigurationNotice(),
+                          const SizedBox(height: 16),
+                        ],
                         _hero(),
                         const SizedBox(height: 24),
                         _offer(),
@@ -196,7 +257,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _offer() => Container(
     padding: const EdgeInsets.all(18),
     color: AppColors.offer,
-    child: const Row(
+    child: Row(
       children: [
         CircleAvatar(
           backgroundColor: AppColors.background,
@@ -236,6 +297,18 @@ class _LoginScreenState extends State<LoginScreen> {
         _methodOption(LoginMethod.phone, Icons.phone_iphone, 'Celular'),
         _methodOption(LoginMethod.email, Icons.mail_outline, 'Correo'),
       ],
+    ),
+  );
+
+  Widget _firebaseConfigurationNotice() => Card(
+    color: AppColors.quickLogin,
+    child: const ListTile(
+      leading: Icon(Icons.cloud_off_outlined, color: AppColors.red),
+      title: Text('Firebase pendiente de configuración'),
+      subtitle: Text(
+        'El acceso y el guardado de pedidos estarán disponibles al conectar '
+        'un proyecto Firebase.',
+      ),
     ),
   );
 
@@ -307,7 +380,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const Text('Contraseña o clave', style: LoginStyles.sectionTitle),
           const Spacer(),
           TextButton(
-            onPressed: () => _message('Te ayudaremos a recuperar tu clave.'),
+            onPressed: _isBusy ? null : _sendPasswordReset,
             child: const Text('¿Olvidaste tu clave?'),
           ),
         ],
@@ -337,11 +410,13 @@ class _LoginScreenState extends State<LoginScreen> {
     elevation: 0,
     child: ListTile(
       leading: const Icon(Icons.bolt, color: AppColors.red, size: 30),
-      title: const Text('Ingreso rápido por WhatsApp'),
-      subtitle: const Text('Sin recordar contraseñas'),
+      title: const Text('Acceso con celular'),
+      subtitle: const Text(
+        'El ingreso por SMS necesita configuración adicional.',
+      ),
       trailing: TextButton(
-        onPressed: _sendCode,
-        child: const Text('Enviar código'),
+        onPressed: () => setState(() => _method = LoginMethod.email),
+        child: const Text('Usar correo'),
       ),
     ),
   );
@@ -351,6 +426,7 @@ class _LoginScreenState extends State<LoginScreen> {
     value: _rememberDevice,
     onChanged: (value) => setState(() => _rememberDevice = value ?? false),
     title: const Text('Recordarme en este dispositivo'),
+    subtitle: const Text('Se guarda el correo, nunca la contraseña.'),
     controlAffinity: ListTileControlAffinity.leading,
     secondary: const Icon(Icons.verified_user_outlined),
   );
@@ -358,12 +434,15 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _loginButton() => SizedBox(
     height: 68,
     child: ElevatedButton(
-      onPressed: _login,
+      onPressed: _isBusy ? null : _login,
       style: LoginStyles.redButton,
-      child: const Row(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('INICIAR SESIÓN', style: LoginStyles.primaryButton),
+          Text(
+            _isBusy ? 'CONECTANDO...' : 'INICIAR SESIÓN',
+            style: LoginStyles.primaryButton,
+          ),
           SizedBox(width: 12),
           Icon(Icons.arrow_forward),
         ],
@@ -432,7 +511,10 @@ class _LoginScreenState extends State<LoginScreen> {
       const Text('¿Aún no tienes cuenta? '),
       TextButton(
         onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const RegisterScreen()),
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                RegisterScreen(accountService: widget.accountService),
+          ),
         ),
         child: const Text('Regístrate aquí'),
       ),

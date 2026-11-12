@@ -7,9 +7,15 @@ import 'notification_settings_screen.dart';
 import 'profile_widgets.dart';
 import 'quick_guide_screen.dart';
 import 'register_screen.dart';
+import 'services/account_service.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({
+    super.key,
+    this.accountService = const FirebaseAccountService(),
+  });
+
+  final AccountService accountService;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -63,87 +69,120 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _signOut() async {
+    try {
+      await widget.accountService.signOut();
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } on AccountServiceException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
   @override
-  Widget build(BuildContext context) => ProfileScaffold(
-    title: 'Mi perfil',
-    children: [
-      Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: AppColors.hero,
-          borderRadius: BorderRadius.circular(28),
-        ),
-        child: Column(
-          children: [
-            const CircleAvatar(
-              radius: 36,
-              backgroundColor: AppColors.red,
-              child: Icon(Icons.person_outline, color: Colors.white, size: 40),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Alex Parrilla',
-              style: Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            const Text('alex@ejemplo.com', textAlign: TextAlign.center),
-            const SizedBox(height: 4),
-            const Text('Cuenta de demostración', textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            const Chip(
-              avatar: Icon(
-                Icons.workspace_premium_outlined,
-                color: AppColors.red,
+  Widget build(BuildContext context) {
+    final session = widget.accountService.currentSession;
+    return ProfileScaffold(
+      title: 'Mi perfil',
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppColors.hero,
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Column(
+            children: [
+              const CircleAvatar(
+                radius: 36,
+                backgroundColor: AppColors.red,
+                child: Icon(
+                  Icons.person_outline,
+                  color: Colors.white,
+                  size: 40,
+                ),
               ),
-              label: Text('450 coronas · Demo'),
-              backgroundColor: AppColors.beige,
-              side: BorderSide.none,
-            ),
-          ],
+              const SizedBox(height: 16),
+              Text(
+                session?.displayName.isNotEmpty == true
+                    ? session!.displayName
+                    : 'Mi cuenta',
+                style: Theme.of(context).textTheme.headlineSmall,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(session?.email ?? '', textAlign: TextAlign.center),
+              const SizedBox(height: 4),
+              const Text(
+                'Cuenta protegida con Firebase',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              const Chip(
+                avatar: Icon(
+                  Icons.workspace_premium_outlined,
+                  color: AppColors.red,
+                ),
+                label: Text('450 coronas · Demo'),
+                backgroundColor: AppColors.beige,
+                side: BorderSide.none,
+              ),
+            ],
+          ),
         ),
-      ),
-      const SizedBox(height: 24),
-      Text('Tu cuenta y más', style: Theme.of(context).textTheme.titleLarge),
-      const SizedBox(height: 12),
-      _option(
-        Icons.person_add_alt_1_outlined,
-        'Registro',
-        'Prueba crear una cuenta',
-        () => _open(const RegisterScreen()),
-      ),
-      _option(
-        Icons.explore_outlined,
-        'Guía rápida',
-        'Conoce la app en cuatro pasos',
-        () => _open(const QuickGuideScreen()),
-      ),
-      _option(
-        Icons.chat_bubble_outline,
-        'Contacto',
-        'Simula una consulta',
-        () => _open(const ContactScreen()),
-      ),
-      _option(
-        Icons.mail_outline,
-        'Newsletter',
-        'Novedades y promociones',
-        () => _open(const NewsletterScreen()),
-      ),
-      _option(
-        Icons.notifications_none_outlined,
-        'Notificaciones',
-        'Configura tus preferencias',
-        () => _open(NotificationSettingsScreen(preferences: _preferences)),
-      ),
-      _option(
-        Icons.share_outlined,
-        'Compartir aplicación',
-        'Invita con una interacción simulada',
-        _share,
-      ),
-    ],
-  );
+        const SizedBox(height: 24),
+        Text('Tu cuenta y más', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 12),
+        _option(
+          Icons.person_add_alt_1_outlined,
+          'Registro',
+          'Prueba crear una cuenta',
+          () => _open(RegisterScreen(accountService: widget.accountService)),
+        ),
+        _option(
+          Icons.explore_outlined,
+          'Guía rápida',
+          'Conoce la app en cuatro pasos',
+          () => _open(const QuickGuideScreen()),
+        ),
+        _option(
+          Icons.chat_bubble_outline,
+          'Contacto',
+          'Simula una consulta',
+          () => _open(const ContactScreen()),
+        ),
+        _option(
+          Icons.mail_outline,
+          'Newsletter',
+          'Novedades y promociones',
+          () => _open(const NewsletterScreen()),
+        ),
+        _option(
+          Icons.notifications_none_outlined,
+          'Notificaciones',
+          'Configura tus preferencias',
+          () => _open(NotificationSettingsScreen(preferences: _preferences)),
+        ),
+        _option(
+          Icons.share_outlined,
+          'Compartir aplicación',
+          'Invita con una interacción simulada',
+          _share,
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: _signOut,
+          icon: const Icon(Icons.logout),
+          label: const Text('Cerrar sesión'),
+        ),
+      ],
+    );
+  }
 
   Widget _option(
     IconData icon,

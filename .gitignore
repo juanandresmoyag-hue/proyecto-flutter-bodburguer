@@ -2,6 +2,8 @@
 # Created by `dart pub`
 .dart_tool/
 .flutter-plugins-dependencies
+firebase_config.json
+service-account*.json
 build/
 .idea/
 *.iml

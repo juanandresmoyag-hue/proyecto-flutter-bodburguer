@@ -10,6 +10,7 @@ import 'package:bod_burguer/register_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/fake_services.dart';
 import 'support/network_images.dart';
 
 Future<void> pumpScreen(
@@ -176,7 +177,8 @@ void main() {
   testWidgets(
     'Registro exige consentimiento y confirma sin retener contraseñas',
     (tester) async {
-      await pumpScreen(tester, const ProfileScreen());
+      final accountService = FakeAccountService();
+      await pumpScreen(tester, ProfileScreen(accountService: accountService));
       await tapVisible(tester, find.text('Registro'));
       await fillRegistration(tester);
       await tapVisible(tester, find.text('Registrarme'));
@@ -187,7 +189,8 @@ void main() {
       expect(find.byType(AlertDialog), findsNothing);
       await tapVisible(tester, find.byType(CheckboxListTile));
       await tapVisible(tester, find.text('Registrarme'));
-      expect(find.text('¡Registro simulado completado!'), findsOneWidget);
+      expect(find.text('¡Cuenta creada!'), findsOneWidget);
+      expect(accountService.events, ['account_created']);
       final fields = tester.widgetList<EditableText>(find.byType(EditableText));
       expect(fields.every((field) => field.controller.text.isEmpty), isTrue);
       await tapVisible(tester, find.text('Entendido'));
@@ -200,8 +203,8 @@ void main() {
     tester,
   ) async {
     await pumpScreen(tester, const RegisterScreen());
-    await tapVisible(tester, find.text('Leer términos de la demostración'));
-    expect(find.text('Términos de la demostración'), findsOneWidget);
+    await tapVisible(tester, find.text('Leer términos de la aplicación'));
+    expect(find.text('Términos de la aplicación'), findsOneWidget);
     await tapVisible(tester, find.text('Cerrar'));
     await tapVisible(tester, find.byTooltip('Mostrar contraseña'));
     await tapVisible(tester, find.byTooltip('Mostrar confirmación'));

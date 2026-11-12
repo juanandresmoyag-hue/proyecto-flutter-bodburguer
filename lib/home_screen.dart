@@ -3,9 +3,21 @@ import 'package:flutter/material.dart';
 import 'promotions_screen.dart';
 import 'profile_screen.dart';
 import 'restaurant_map_view.dart';
+import 'cart_screen.dart';
+import 'services/account_service.dart';
+import 'services/order_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({
+    super.key,
+    this.accountService = const FirebaseAccountService(),
+    this.orderService = const FirebaseOrderService(),
+    this.session,
+  });
+
+  final AccountService accountService;
+  final OrderService orderService;
+  final AccountSession? session;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -15,7 +27,13 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedOrderMode = 0; // 0: Delivery, 1: Para Llevar, 2: Auto-King
   int _selectedCategory = 0;
   int _currentNavIndex = 0;
-  double _cartTotal = 0.0;
+  final List<CartItem> _cartItems = [];
+
+  double get _cartTotal =>
+      _cartItems.fold<double>(0, (total, item) => total + item.subtotal);
+
+  int get _cartQuantity =>
+      _cartItems.fold<int>(0, (total, item) => total + item.quantity);
 
   final List<Map<String, dynamic>> _categories = [
     {
@@ -62,7 +80,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _addToCart(String product, double price) {
     setState(() {
-      _cartTotal += price;
+      final id = product
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+          .replaceAll(RegExp(r'^-|-$'), '');
+      final index = _cartItems.indexWhere((item) => item.id == id);
+      if (index < 0) {
+        _cartItems.add(
+          CartItem(id: id, name: product, unitPrice: price, quantity: 1),
+        );
+      } else {
+        _cartItems[index] = _cartItems[index].copyWith(
+          quantity: _cartItems[index].quantity + 1,
+        );
+      }
     });
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -304,7 +335,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   tooltip: 'Mi perfil',
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => const ProfileScreen(),
+                      builder: (_) =>
+                          ProfileScreen(accountService: widget.accountService),
                     ),
                   ),
                   icon: const CircleAvatar(
@@ -1365,17 +1397,24 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildNavItem(1, Icons.lunch_dining, 'Menú'),
               _buildNavCouponItem(2, 'Cupones'),
               _buildNavItem(3, Icons.workspace_premium, 'Coronas'),
-              // Botón Carrito
               GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Carrito con S/ ${_cartTotal.toStringAsFixed(2)}',
-                      ),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => CartScreen(
+                      items: List<CartItem>.unmodifiable(_cartItems),
+                      accountService: widget.accountService,
+                      orderService: widget.orderService,
+                      onItemsChanged: (items) {
+                        if (!mounted) return;
+                        setState(() {
+                          _cartItems
+                            ..clear()
+                            ..addAll(items);
+                        });
+                      },
                     ),
-                  );
-                },
+                  ),
+                ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
@@ -1401,7 +1440,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'S/ ${_cartTotal.toStringAsFixed(2)}',
+                        '$_cartQuantity · S/ ${_cartTotal.toStringAsFixed(2)}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -1452,9 +1491,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildNavCouponItem(int index, String label) {
     final isSelected = _currentNavIndex == index;
     return InkWell(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const PromotionsScreen()),
-      ),
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const PromotionsScreen())),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

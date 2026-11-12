@@ -4,9 +4,15 @@ import 'package:flutter/services.dart';
 import 'app_theme.dart';
 import 'profile_validators.dart';
 import 'profile_widgets.dart';
+import 'services/account_service.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({
+    super.key,
+    this.accountService = const FirebaseAccountService(),
+  });
+
+  final AccountService accountService;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -14,45 +20,82 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _name = TextEditingController();
+  final _email = TextEditingController();
+  final _phone = TextEditingController();
   final _password = TextEditingController();
   final _confirmation = TextEditingController();
   bool _hidePassword = true;
   bool _hideConfirmation = true;
+  bool _isRegistering = false;
 
   @override
   void dispose() {
+    _name.dispose();
+    _email.dispose();
+    _phone.dispose();
     _password.dispose();
     _confirmation.dispose();
     super.dispose();
   }
 
   Future<void> _register() async {
+    if (_isRegistering) return;
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
-    _formKey.currentState!.reset();
-    _password.clear();
-    _confirmation.clear();
-    await showDemoConfirmation(
-      context,
-      title: '¡Registro simulado completado!',
-      message:
-          'Has completado el formulario de demostración. '
-          'No se creó una cuenta real ni se enviaron o guardaron tus datos '
-          'o contraseñas.',
-    );
-    if (mounted) Navigator.of(context).pop();
+    setState(() => _isRegistering = true);
+    try {
+      await widget.accountService.register(
+        name: _name.text.trim(),
+        email: _email.text.trim(),
+        phone: _phone.text.trim(),
+        password: _password.text,
+      );
+      if (!mounted) return;
+      _formKey.currentState!.reset();
+      _name.clear();
+      _email.clear();
+      _phone.clear();
+      _password.clear();
+      _confirmation.clear();
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('¡Cuenta creada!'),
+          content: const Text(
+            'Tu cuenta y perfil se guardaron. También se registró este acceso.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Entendido'),
+            ),
+          ],
+        ),
+      );
+      if (mounted) Navigator.of(context).pop();
+    } on AccountServiceException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) setState(() => _isRegistering = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) => ProfileScaffold(
     title: 'Crear cuenta',
     children: [
-      const ProfileIntro(
+      ProfileIntro(
         icon: Icons.person_add_alt_1_outlined,
         title: '¡Tu próxima corona te espera!',
-        description:
-            'Prueba el registro con datos de ejemplo. '
-            'Este formulario es una simulación académica.',
+        description: widget.accountService.isConfigured
+            ? 'Crea tu cuenta con correo y contraseña. Tus pedidos quedarán '
+                  'asociados a este perfil.'
+            : 'Firebase aún no está configurado. No escribas datos reales '
+                  'hasta conectar tu proyecto.',
       ),
       Form(
         key: _formKey,
@@ -60,6 +103,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextFormField(
+              controller: _name,
               decoration: ProfileStyles.input('Nombre completo'),
               textCapitalization: TextCapitalization.words,
               textInputAction: TextInputAction.next,
@@ -67,6 +111,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             const SizedBox(height: 16),
             TextFormField(
+              controller: _email,
               decoration: ProfileStyles.input('Correo electrónico'),
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
@@ -75,6 +120,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             const SizedBox(height: 16),
             TextFormField(
+              controller: _phone,
               decoration: ProfileStyles.input('Celular peruano (9 dígitos)'),
               keyboardType: TextInputType.phone,
               textInputAction: TextInputAction.next,
@@ -142,12 +188,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 context: context,
                 builder: (dialogContext) => AlertDialog(
                   scrollable: true,
-                  title: const Text('Términos de la demostración'),
+                  title: const Text('Términos de la aplicación'),
                   content: const Text(
-                    'Aplicación académica no oficial de SENATI. Usa datos ficticios. '
-                    'No se crean cuentas, pedidos ni beneficios reales. '
-                    'Los datos del formulario no se transmiten ni se almacenan '
-                    'y se descartan al completar o cerrar esta pantalla.',
+                    'La cuenta y los pedidos se guardan en Firebase cuando el '
+                    'proyecto está configurado. La contraseña la administra '
+                    'Firebase Authentication y no se guarda en el perfil. '
+                    'Los pedidos son demostrativos: no se cobra ni se coordina '
+                    'un envío real.',
                   ),
                   actions: [
                     TextButton(
@@ -157,13 +204,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                 ),
               ),
-              child: const Text('Leer términos de la demostración'),
+              child: const Text('Leer términos de la aplicación'),
             ),
             const ConsentField(
               label: 'Acepto los términos de la demostración.',
               errorMessage: 'Debes aceptar los términos para continuar.',
             ),
-            ProfileSubmitButton(label: 'Registrarme', onPressed: _register),
+            ProfileSubmitButton(
+              label: _isRegistering ? 'Creando cuenta...' : 'Registrarme',
+              onPressed: _register,
+            ),
           ],
         ),
       ),
