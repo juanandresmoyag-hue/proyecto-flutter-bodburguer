@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'app_theme.dart';
 
 class RestaurantInfo {
@@ -112,7 +113,8 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
 
   List<RestaurantInfo> get _filteredRestaurants {
     return _restaurants.where((r) {
-      final matchesSearch = _searchQuery.isEmpty ||
+      final matchesSearch =
+          _searchQuery.isEmpty ||
           r.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           r.district.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           r.address.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -162,18 +164,12 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
         Expanded(
           flex: 5,
           child: Stack(
-            children: [
-              _buildMapCanvas(),
-              _buildMapOverlayControls(),
-            ],
+            children: [_buildMapCanvas(), _buildMapOverlayControls()],
           ),
         ),
 
         // Bottom Restaurant Cards Sheet
-        Expanded(
-          flex: 6,
-          child: _buildRestaurantCardsList(),
-        ),
+        Expanded(flex: 6, child: _buildRestaurantCardsList()),
       ],
     );
   }
@@ -191,7 +187,10 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
               hintStyle: const TextStyle(fontSize: 14, color: AppColors.muted),
               filled: true,
               fillColor: AppColors.background,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
               prefixIcon: const Icon(Icons.search, color: AppColors.red),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
@@ -258,10 +257,7 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
             return Stack(
               children: [
                 // Base Vector Map Painter
-                CustomPaint(
-                  size: Size(w, h),
-                  painter: _LimaCityMapPainter(),
-                ),
+                CustomPaint(size: Size(w, h), painter: _LimaCityMapPainter()),
 
                 // User Location Pin
                 Positioned(
@@ -309,7 +305,10 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: isSelected ? AppColors.red : AppColors.ink,
                               borderRadius: BorderRadius.circular(10),
@@ -320,7 +319,11 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.lunch_dining, size: 12, color: Colors.white),
+                                const Icon(
+                                  Icons.lunch_dining,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   '${restaurant.distanceKm} km',
@@ -337,7 +340,9 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
                           Icon(
                             Icons.location_on,
                             size: isSelected ? 42 : 32,
-                            color: isSelected ? AppColors.red : const Color(0xFFC4302B),
+                            color: isSelected
+                                ? AppColors.red
+                                : const Color(0xFFC4302B),
                             shadows: const [
                               Shadow(color: Colors.black45, blurRadius: 6),
                             ],
@@ -373,11 +378,17 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
               children: [
                 IconButton(
                   tooltip: 'Mi ubicación',
-                  icon: const Icon(Icons.my_location, color: AppColors.red, size: 20),
+                  icon: const Icon(
+                    Icons.my_location,
+                    color: AppColors.red,
+                    size: 20,
+                  ),
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Centrando en tu ubicación (Miraflores, Lima)...'),
+                        content: Text(
+                          'Centrando en tu ubicación (Miraflores, Lima)...',
+                        ),
                         duration: Duration(seconds: 1),
                       ),
                     );
@@ -386,7 +397,11 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
                 const Divider(height: 1),
                 IconButton(
                   tooltip: 'Ver todos los locales',
-                  icon: const Icon(Icons.layers_outlined, color: AppColors.brown, size: 20),
+                  icon: const Icon(
+                    Icons.layers_outlined,
+                    color: AppColors.brown,
+                    size: 20,
+                  ),
                   onPressed: () {
                     setState(() => _activeFilter = 'Todos');
                   },
@@ -407,10 +422,12 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
-            child: Row(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 const Icon(Icons.storefront, color: AppColors.red, size: 22),
-                const SizedBox(width: 8),
                 Text(
                   'Restaurantes cercanos (${_filteredRestaurants.length})',
                   style: const TextStyle(
@@ -419,7 +436,6 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
                     color: AppColors.ink,
                   ),
                 ),
-                const Spacer(),
                 const Text(
                   'Ordenado por distancia',
                   style: TextStyle(fontSize: 11, color: AppColors.muted),
@@ -503,13 +519,17 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
                                       ),
                                       Container(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 2),
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: Colors.green.shade50,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           border: Border.all(
-                                              color: Colors.green.shade200),
+                                            color: Colors.green.shade200,
+                                          ),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -554,11 +574,16 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
                         const SizedBox(height: 8),
 
                         // Horario / Schedules row
-                        Row(
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            const Icon(Icons.schedule,
-                                size: 15, color: AppColors.brown),
-                            const SizedBox(width: 6),
+                            const Icon(
+                              Icons.schedule,
+                              size: 15,
+                              color: AppColors.brown,
+                            ),
                             Text(
                               'Horario: ${restaurant.openHours}',
                               style: const TextStyle(
@@ -567,7 +592,6 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
                                 color: AppColors.ink,
                               ),
                             ),
-                            const Spacer(),
                             Text(
                               'A ${restaurant.distanceKm} km',
                               style: const TextStyle(
@@ -583,8 +607,11 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
                           const SizedBox(height: 6),
                           Row(
                             children: const [
-                              Icon(Icons.chair_alt,
-                                  size: 15, color: AppColors.brown),
+                              Icon(
+                                Icons.chair_alt,
+                                size: 15,
+                                color: AppColors.brown,
+                              ),
                               SizedBox(width: 6),
                               Expanded(
                                 child: Text(
@@ -611,7 +638,8 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                          'Obteniendo ruta a ${restaurant.name}...'),
+                                        'Obteniendo ruta a ${restaurant.name}...',
+                                      ),
                                       duration: const Duration(seconds: 1),
                                     ),
                                   );
@@ -621,7 +649,9 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: AppColors.brown,
                                   side: BorderSide(color: Colors.grey.shade300),
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
                                   textStyle: const TextStyle(fontSize: 12),
                                 ),
                               ),
@@ -646,7 +676,9 @@ class _RestaurantMapViewState extends State<RestaurantMapView> {
                                       ? AppColors.red
                                       : AppColors.ink,
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
                                   elevation: isSelected ? 3 : 1,
                                 ),
                               ),
@@ -702,7 +734,11 @@ class _LimaCityMapPainter extends CustomPainter {
     // Parque Kennedy area
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(w * 0.48, h * 0.46), width: 36, height: 26),
+        Rect.fromCenter(
+          center: Offset(w * 0.48, h * 0.46),
+          width: 36,
+          height: 26,
+        ),
         const Radius.circular(8),
       ),
       parkPaint,
@@ -711,7 +747,11 @@ class _LimaCityMapPainter extends CustomPainter {
     // El Olivar area
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(w * 0.52, h * 0.20), width: 44, height: 28),
+        Rect.fromCenter(
+          center: Offset(w * 0.52, h * 0.20),
+          width: 44,
+          height: 28,
+        ),
         const Radius.circular(8),
       ),
       parkPaint,
@@ -731,7 +771,8 @@ class _LimaCityMapPainter extends CustomPainter {
 
     // Main Avenues (Av. Larco, Av. Benavides, Av. Javier Prado, Vía Expresa)
     final mainAvePaint = Paint()
-      ..color = const Color(0xFFFFF7C2) // classic map yellow avenue
+      ..color =
+          const Color(0xFFFFF7C2) // classic map yellow avenue
       ..strokeWidth = 6.0
       ..strokeCap = StrokeCap.round;
 
@@ -779,9 +820,7 @@ class _LimaCityMapPainter extends CustomPainter {
       fontWeight: FontWeight.bold,
     );
 
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-    );
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
     void drawLabel(String text, Offset pos) {
       textPainter.text = TextSpan(text: text, style: labelStyle);

@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'app_theme.dart';
 import 'home_screen.dart';
+import 'register_screen.dart';
+import 'services/account_service.dart';
+import 'services/order_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({
+    super.key,
+    this.accountService = const FirebaseAccountService(),
+    this.orderService = const FirebaseOrderService(),
+  });
+
+  final AccountService accountService;
+  final OrderService orderService;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -16,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _password = TextEditingController();
   bool _hidePassword = true;
   bool _rememberDevice = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -24,33 +34,67 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _restoreRememberedEmail();
+  }
+
+  Future<void> _restoreRememberedEmail() async {
+    try {
+      final email = await widget.accountService.loadRememberedEmail();
+      if (mounted && email != null) {
+        _phone.text = email;
+        setState(() => _rememberDevice = true);
+      }
+    } on Exception catch (error) {
+      if (mounted) _message('No se pudo recuperar el correo guardado: $error');
+    }
+  }
+
   void _message(String text) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(text)));
   }
 
-  void _navigateToHome() {
+  void _navigateToHome({AccountSession? session}) {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      MaterialPageRoute(
+        builder: (_) => HomeScreen(
+          accountService: widget.accountService,
+          orderService: widget.orderService,
+          session: session,
+        ),
+      ),
     );
   }
 
-  void _login() {
-    if (_phone.text.trim().isEmpty || _password.text.isEmpty) {
-      _message('Ingresa tu número de celular y contraseña.');
+  Future<void> _login() async {
+    final email = _phone.text.trim();
+    if (email.isEmpty || _password.text.isEmpty) {
+      _message('Ingresa tu correo electrónico y contraseña.');
       return;
     }
-    _navigateToHome();
+    setState(() => _isLoading = true);
+    try {
+      final session = await widget.accountService.signIn(
+        email: email,
+        password: _password.text,
+      );
+      await widget.accountService.rememberEmail(_rememberDevice ? email : null);
+      if (mounted) _navigateToHome(session: session);
+    } on AccountServiceException catch (error) {
+      if (mounted) _message(error.message);
+    } on Exception catch (error) {
+      if (mounted) _message('No se pudo iniciar sesión: $error');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   void _sendCode() {
-    if (_phone.text.trim().length < 7) {
-      _message('Ingresa un número de celular válido.');
-      return;
-    }
-    _message('Código validado. ¡Bienvenido a Burger King!');
-    _navigateToHome();
+    _message('El ingreso por WhatsApp estará disponible próximamente.');
   }
 
   @override
@@ -200,26 +244,26 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _phoneField() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Row(
+      Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: const [
-          Text('Número de celular', style: LoginStyles.sectionTitle),
-          Spacer(),
-          Text('Vía SMS / WhatsApp'),
+          Text('Correo electrónico', style: LoginStyles.sectionTitle),
+          Text('Acceso seguro'),
         ],
       ),
       const SizedBox(height: 8),
       Row(
         children: [
-          const Text('🇵🇪  +51'),
-          const SizedBox(width: 12),
           Expanded(
             child: TextField(
               controller: _phone,
-              keyboardType: TextInputType.phone,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
               decoration: LoginStyles.input(
-                hint: '987 654 321',
-                prefix: const Icon(Icons.phone_iphone),
+                hint: 'correo@ejemplo.com',
+                prefix: const Icon(Icons.email_outlined),
                 suffix: IconButton(
                   tooltip: 'Borrar',
                   onPressed: _phone.clear,
@@ -236,12 +280,14 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _passwordField() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Row(
+      Wrap(
+        spacing: 8,
+        runSpacing: 0,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          const Text('Contraseña o clave', style: LoginStyles.sectionTitle),
-          const Spacer(),
+          const Text('Contraseña', style: LoginStyles.sectionTitle),
           TextButton(
-            onPressed: () => _message('Te ayudaremos a recuperar tu clave.'),
+            onPressed: _resetPassword,
             child: const Text('¿Olvidaste tu clave?'),
           ),
         ],
@@ -250,7 +296,7 @@ class _LoginScreenState extends State<LoginScreen> {
         controller: _password,
         obscureText: _hidePassword,
         decoration: LoginStyles.input(
-          hint: 'Ingresa tus dígitos o clave',
+          hint: 'Ingresa tu contraseña',
           prefix: const Icon(Icons.lock_outline),
           suffix: IconButton(
             tooltip: _hidePassword ? 'Mostrar clave' : 'Ocultar clave',
@@ -292,14 +338,17 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _loginButton() => SizedBox(
     height: 68,
     child: ElevatedButton(
-      onPressed: _login,
+      onPressed: _isLoading ? null : _login,
       style: LoginStyles.redButton,
-      child: const Row(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('INICIAR SESIÓN', style: LoginStyles.primaryButton),
-          SizedBox(width: 12),
-          Icon(Icons.arrow_forward),
+          Text(
+            _isLoading ? 'INGRESANDO...' : 'INICIAR SESIÓN',
+            style: LoginStyles.primaryButton.copyWith(fontSize: 18),
+          ),
+          const SizedBox(width: 8),
+          const Icon(Icons.arrow_forward),
         ],
       ),
     ),
@@ -321,16 +370,10 @@ class _LoginScreenState extends State<LoginScreen> {
       Row(
         children: [
           Expanded(
-            child: _socialButton('Google', 'G', () {
-              _navigateToHome();
-            }),
+            child: _socialButton('Google', 'G', _unsupportedSocialLogin),
           ),
           const SizedBox(width: 14),
-          Expanded(
-            child: _socialButton('Apple', '', () {
-              _navigateToHome();
-            }),
-          ),
+          Expanded(child: _socialButton('Apple', '', _unsupportedSocialLogin)),
         ],
       ),
     ],
@@ -365,7 +408,12 @@ class _LoginScreenState extends State<LoginScreen> {
     children: [
       const Text('¿Aún no tienes cuenta? '),
       TextButton(
-        onPressed: () => _message('El registro estará disponible pronto.'),
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                RegisterScreen(accountService: widget.accountService),
+          ),
+        ),
         child: const Text('Regístrate aquí'),
       ),
     ],
@@ -376,18 +424,30 @@ class _LoginScreenState extends State<LoginScreen> {
       style: LoginStyles.terms,
       children: const [
         TextSpan(text: 'Al ingresar confirmas que aceptas nuestros '),
-        TextSpan(
-          text: 'Términos y Condiciones',
-          style: LoginStyles.legalLink,
-        ),
+        TextSpan(text: 'Términos y Condiciones', style: LoginStyles.legalLink),
         TextSpan(text: ' y la '),
-        TextSpan(
-          text: 'Política de Privacidad',
-          style: LoginStyles.legalLink,
-        ),
+        TextSpan(text: 'Política de Privacidad', style: LoginStyles.legalLink),
         TextSpan(text: ' de Burger King Perú.'),
       ],
     ),
     textAlign: TextAlign.center,
   );
+
+  Future<void> _resetPassword() async {
+    final email = _phone.text.trim();
+    if (email.isEmpty) {
+      _message('Escribe tu correo para enviarte el enlace de recuperación.');
+      return;
+    }
+    try {
+      await widget.accountService.sendPasswordReset(email);
+      if (mounted) _message('Revisa tu correo para restablecer la contraseña.');
+    } on AccountServiceException catch (error) {
+      if (mounted) _message(error.message);
+    }
+  }
+
+  void _unsupportedSocialLogin() {
+    _message('El ingreso con Google o Apple no está configurado todavía.');
+  }
 }

@@ -1,11 +1,34 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'app_theme.dart';
+import 'cart_screen.dart';
+import 'crowns_screen.dart';
+import 'promotions_screen.dart';
+import 'profile_screen.dart';
 import 'restaurant_map_view.dart';
+import 'section_navigation_bar.dart';
+import 'services/account_service.dart';
+import 'services/order_service.dart';
 
 enum OrderMode { delivery, restaurant }
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({
+    super.key,
+    this.accountService = const FirebaseAccountService(),
+    this.orderService = const FirebaseOrderService(),
+    this.session,
+    this.openMenuOnStart = false,
+  });
+
+  final AccountService accountService;
+  final OrderService orderService;
+  final AccountSession? session;
+  final bool openMenuOnStart;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -15,13 +38,37 @@ class _HomeScreenState extends State<HomeScreen> {
   OrderMode _orderMode = OrderMode.delivery;
   int _selectedCategoryIndex = 0;
   int _navBarIndex = 0;
-  double _cartTotal = 0.00;
-  int _cartItemCount = 0;
+  final _menuSectionKey = GlobalKey();
+  late final Future<void> _cartRestore;
+  final List<CartItem> _cartItems = [];
   String _selectedStoreName = 'BK Benavides Miraflores';
   String _selectedStoreHours = 'Abierto hoy hasta las 11:30 PM';
 
+  @override
+  void initState() {
+    super.initState();
+    _cartRestore = _restoreCart();
+    if (widget.openMenuOnStart) {
+      _navBarIndex = 0;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final menuContext = _menuSectionKey.currentContext;
+        if (mounted && menuContext != null) {
+          Scrollable.ensureVisible(
+            menuContext,
+            duration: const Duration(milliseconds: 350),
+            alignment: 0.1,
+          );
+        }
+      });
+    }
+  }
+
   final List<Map<String, dynamic>> _categories = const [
-    {'name': 'Lo + Pedido', 'icon': Icons.local_fire_department, 'active': true},
+    {
+      'name': 'Lo + Pedido',
+      'icon': Icons.local_fire_department,
+      'active': true,
+    },
     {'name': 'Whopper®', 'icon': Icons.lunch_dining, 'active': false},
     {'name': 'Pollo Crispy', 'icon': Icons.kebab_dining, 'active': false},
     {'name': 'Snacks', 'icon': Icons.fastfood, 'active': false},
@@ -29,31 +76,208 @@ class _HomeScreenState extends State<HomeScreen> {
     {'name': 'Bebidas', 'icon': Icons.local_drink, 'active': false},
   ];
 
-  void _addToCart(String itemName, double price) {
-    setState(() {
-      _cartTotal += price;
-      _cartItemCount += 1;
-    });
+  static const _menuProducts = [
+    {
+      'category': 'Whopper®',
+      'name': 'Whopper Clásico',
+      'price': 21.50,
+      'description': 'Carne a la parrilla, tomate, lechuga y mayonesa.',
+      'emoji': '🍔',
+      'ingredients': ['Lechuga', 'Tomate', 'Cebolla', 'Pepinillos', 'Mayonesa'],
+      'extras': ['Queso extra', 'Tocino'],
+    },
+    {
+      'category': 'Whopper®',
+      'name': 'Whopper Doble con Queso',
+      'price': 28.90,
+      'description': 'Doble carne a la parrilla, queso y vegetales frescos.',
+      'emoji': '🍔',
+      'ingredients': ['Lechuga', 'Tomate', 'Cebolla', 'Pepinillos', 'Mayonesa'],
+      'extras': ['Queso extra', 'Tocino'],
+    },
+    {
+      'category': 'Pollo Crispy',
+      'name': 'King de Pollo',
+      'price': 18.50,
+      'description': 'Pechuga crocante, lechuga fresca y mayonesa.',
+      'emoji': '🍗',
+      'ingredients': ['Lechuga', 'Tomate', 'Mayonesa'],
+      'extras': ['Queso extra', 'Tocino'],
+    },
+    {
+      'category': 'Snacks',
+      'name': 'King Nuggets (6 unidades)',
+      'price': 12.90,
+      'description': 'Nuggets de pollo crocantes con salsa a elección.',
+      'emoji': '🍗',
+      'ingredients': ['Salsa BBQ'],
+      'extras': ['Salsa adicional'],
+    },
+    {
+      'category': 'Snacks',
+      'name': 'Papas clásicas',
+      'price': 8.90,
+      'description': 'Papas doradas y crujientes.',
+      'emoji': '🍟',
+      'ingredients': ['Sal'],
+      'extras': ['Salsa adicional'],
+    },
+    {
+      'category': 'Postres',
+      'name': 'Sundae de chocolate',
+      'price': 6.90,
+      'description': 'Helado suave de vainilla con salsa de chocolate.',
+      'emoji': '🍨',
+      'ingredients': ['Salsa de chocolate'],
+      'extras': ['Salsa de caramelo'],
+    },
+    {
+      'category': 'Bebidas',
+      'name': 'Gaseosa mediana',
+      'price': 6.50,
+      'description': 'Elige tu bebida fría favorita.',
+      'emoji': '🥤',
+      'ingredients': ['Hielo'],
+      'extras': ['Sin hielo'],
+    },
+  ];
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.ink,
-        duration: const Duration(milliseconds: 1800),
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.greenAccent),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Agregado: $itemName (S/ ${price.toStringAsFixed(2)})',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
+  Future<void> _restoreCart() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final encoded = preferences.getString('bod_burguer_cart');
+      if (encoded == null) return;
+      final decoded = jsonDecode(encoded);
+      if (decoded is! List) {
+        throw const FormatException('El carrito guardado no es una lista.');
+      }
+      if (decoded.any((item) => item is! Map<String, dynamic>)) {
+        throw const FormatException(
+          'El carrito guardado contiene productos inválidos.',
+        );
+      }
+      final items = decoded
+          .map((item) => CartItem.fromJson(item as Map<String, dynamic>))
+          .toList();
+      if (mounted) {
+        setState(
+          () => _cartItems
+            ..clear()
+            ..addAll(items),
+        );
+      }
+    } on FormatException catch (error) {
+      if (mounted) _showMessage('No se pudo recuperar el carrito: $error');
+    } on Exception catch (error) {
+      if (mounted) _showMessage('Error al recuperar el carrito: $error');
+    }
+  }
+
+  Future<void> _persistCart() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final saved = await preferences.setString(
+        'bod_burguer_cart',
+        jsonEncode(_cartItems.map((item) => item.toJson()).toList()),
+      );
+      if (!saved) throw StateError('El dispositivo no guardó los cambios.');
+    } on Exception catch (error) {
+      if (mounted) _showMessage('No se pudo guardar el carrito: $error');
+    }
+  }
+
+  void _onCartItemsChanged(List<CartItem> items) {
+    setState(() {
+      _cartItems
+        ..clear()
+        ..addAll(items);
+    });
+    unawaited(_persistCart());
+  }
+
+  Future<void> _openCart() async {
+    await _cartRestore;
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CartScreen(
+          items: List<CartItem>.unmodifiable(_cartItems),
+          onItemsChanged: _onCartItemsChanged,
+          accountService: widget.accountService,
+          orderService: widget.orderService,
         ),
       ),
     );
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _addToCart(
+    String itemName,
+    double price, {
+    String description = 'Personaliza tu pedido antes de agregarlo al carrito.',
+    String emoji = '🍔',
+    List<String> ingredients = const [
+      'Lechuga',
+      'Tomate',
+      'Cebolla',
+      'Pepinillos',
+      'Mayonesa',
+    ],
+    List<String> extras = const ['Queso extra', 'Tocino'],
+  }) async {
+    await _cartRestore;
+    if (!mounted) return;
+    final chosenItem = await showModalBottomSheet<CartItem>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _ProductDetailsSheet(
+        name: itemName,
+        description: description,
+        emoji: emoji,
+        price: price,
+        ingredients: ingredients,
+        extras: extras,
+      ),
+    );
+    if (chosenItem == null || !mounted) return;
+
+    final existingIndex = _cartItems.indexWhere(
+      (item) => item.id == chosenItem.id,
+    );
+    if (existingIndex >= 0 && _cartItems[existingIndex].quantity >= 20) {
+      _showMessage('No puedes agregar más de 20 unidades del mismo producto.');
+      return;
+    }
+
+    setState(() {
+      if (existingIndex == -1) {
+        _cartItems.add(chosenItem);
+      } else {
+        _cartItems[existingIndex] = _cartItems[existingIndex].copyWith(
+          quantity: _cartItems[existingIndex].quantity + 1,
+        );
+      }
+    });
+    unawaited(_persistCart());
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.ink,
+          duration: const Duration(milliseconds: 1800),
+          content: Text(
+            'Agregado: ${chosenItem.name} (S/ ${chosenItem.unitPrice.toStringAsFixed(2)})',
+          ),
+        ),
+      );
   }
 
   @override
@@ -76,18 +300,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       onSelectRestaurant: (restaurant) {
                         setState(() {
                           _selectedStoreName = restaurant.name;
-                          _selectedStoreHours = 'Abierto hoy: ${restaurant.openHours}';
-                          _orderMode = OrderMode.delivery; // Return to menu with selected store
+                          _selectedStoreHours =
+                              'Abierto hoy: ${restaurant.openHours}';
+                          _orderMode = OrderMode
+                              .delivery; // Return to menu with selected store
                         });
                       },
                     )
                   : _buildHomeDeliveryFeed(),
             ),
-
-            // Bottom Navigation Bar
-            _buildBottomNavigationBar(),
           ],
         ),
+      ),
+      bottomNavigationBar: SectionNavigationBar(
+        selectedIndex: _navBarIndex,
+        onSelect: _selectNavigation,
       ),
     );
   }
@@ -137,24 +364,39 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.location_on, size: 16, color: AppColors.red),
+                        const Icon(
+                          Icons.location_on,
+                          size: 16,
+                          color: AppColors.red,
+                        ),
                         const SizedBox(width: 4),
-                        const Text(
-                          'Miraflores, Lima',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
+                        const Flexible(
+                          child: Text(
+                            'Miraflores, Lima',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.ink,
+                            ),
                           ),
                         ),
-                        const Icon(Icons.keyboard_arrow_down, size: 18, color: AppColors.ink),
+                        const Icon(
+                          Icons.keyboard_arrow_down,
+                          size: 18,
+                          color: AppColors.ink,
+                        ),
                       ],
                     ),
                     const Padding(
                       padding: EdgeInsets.only(left: 20),
                       child: Row(
                         children: [
-                          Icon(Icons.schedule, size: 12, color: AppColors.muted),
+                          Icon(
+                            Icons.schedule,
+                            size: 12,
+                            color: AppColors.muted,
+                          ),
                           SizedBox(width: 4),
                           Text(
                             '25–35 min',
@@ -174,36 +416,55 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           // Coronas Points Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF7E6),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFFFD580)),
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const CrownsScreen()),
             ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.workspace_premium, color: Color(0xFFE08700), size: 18),
-                SizedBox(width: 4),
-                Text(
-                  '450',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    color: Color(0xFF8A5100),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7E6),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFFFD580)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.workspace_premium,
+                    color: Color(0xFFE08700),
+                    size: 18,
                   ),
-                ),
-              ],
+                  SizedBox(width: 4),
+                  Text(
+                    '450',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: Color(0xFF8A5100),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 10),
 
           // User Profile Avatar
-          CircleAvatar(
-            radius: 19,
-            backgroundColor: AppColors.beige,
-            child: const Icon(Icons.person, color: AppColors.brown),
+          IconButton(
+            tooltip: 'Mi perfil',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    ProfileScreen(accountService: widget.accountService),
+              ),
+            ),
+            icon: const CircleAvatar(
+              radius: 19,
+              backgroundColor: AppColors.beige,
+              child: Icon(Icons.person, color: AppColors.brown),
+            ),
           ),
         ],
       ),
@@ -240,7 +501,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 mode: OrderMode.restaurant,
               ),
             ),
-
           ],
         ),
       ),
@@ -270,7 +530,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
-                  )
+                  ),
                 ]
               : null,
         ),
@@ -316,6 +576,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // 4.3 Explora el Menú (Categories Horizontal Scroll)
           _buildCategoryMenuSection(),
+
+          const SizedBox(height: 16),
+
+          _buildMenuProducts(),
 
           const SizedBox(height: 24),
 
@@ -381,7 +645,10 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFDE59),
                       borderRadius: BorderRadius.circular(16),
@@ -402,9 +669,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(16),
@@ -412,7 +682,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.local_fire_department, size: 13, color: Colors.orangeAccent),
+                        Icon(
+                          Icons.local_fire_department,
+                          size: 13,
+                          color: Colors.orangeAccent,
+                        ),
                         SizedBox(width: 2),
                         Text(
                           '-31% DCTO',
@@ -458,8 +732,10 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 14),
 
               // Price & Button Row with Burger graphic
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                crossAxisAlignment: WrapCrossAlignment.end,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -476,7 +752,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               fontWeight: FontWeight.w900,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 4),
                           Text(
                             'S/ 28.90',
                             style: TextStyle(
@@ -490,12 +766,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 10),
                       ElevatedButton(
-                        onPressed: () => _addToCart('Mega Promo Whopper Doble', 19.90),
+                        onPressed: () =>
+                            _addToCart('Mega Promo Whopper Doble', 19.90),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.red,
                           elevation: 3,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
@@ -517,8 +797,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  const Spacer(),
-
                   // Burger Combo Graphic
                   Container(
                     width: 95,
@@ -526,17 +804,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.25),
+                      ),
                     ),
                     child: const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text('🍔', style: TextStyle(fontSize: 38)),
                         SizedBox(height: 2),
-                        Text(
-                          '🍟 + 🥤',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                        Text('🍟 + 🥤', style: TextStyle(fontSize: 16)),
                       ],
                     ),
                   ),
@@ -558,7 +835,11 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFFFE6B5)),
         boxShadow: const [
-          BoxShadow(color: Color(0x0C000000), blurRadius: 8, offset: Offset(0, 3)),
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
         ],
       ),
       child: Column(
@@ -575,7 +856,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
-                  child: Icon(Icons.workspace_premium, color: Color(0xFFB06F00), size: 28),
+                  child: Icon(
+                    Icons.workspace_premium,
+                    color: Color(0xFFB06F00),
+                    size: 28,
+                  ),
                 ),
               ),
               const SizedBox(width: 14),
@@ -585,7 +870,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         const Text(
                           'Mis Coronas',
@@ -595,9 +883,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             color: AppColors.ink,
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFD580),
                             borderRadius: BorderRadius.circular(12),
@@ -621,7 +911,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           TextSpan(text: 'Te faltan '),
                           TextSpan(
                             text: '50 coronas',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.red),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.red,
+                            ),
                           ),
                           TextSpan(text: ' para un Whopper Jr. gratis'),
                         ],
@@ -659,16 +952,25 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 14),
 
           // Progress Bar
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            runSpacing: 4,
             children: const [
               Text(
                 'Progreso: 450 / 500',
-                style: TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               Text(
                 '90% completado',
-                style: TextStyle(fontSize: 11, color: Color(0xFFB06F00), fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFFB06F00),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -679,7 +981,9 @@ class _HomeScreenState extends State<HomeScreen> {
               value: 0.90,
               minHeight: 8,
               backgroundColor: const Color(0xFFEADBCE),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFC78B0E)),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Color(0xFFC78B0E),
+              ),
             ),
           ),
 
@@ -688,21 +992,24 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 10),
 
           // Footer link
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runSpacing: 8,
             children: [
               const Icon(Icons.redeem, size: 16, color: AppColors.brown),
-              const SizedBox(width: 6),
               const Text(
                 'Canjea cupones desde 200 pts',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.brown),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.brown,
+                ),
               ),
-              const Spacer(),
               InkWell(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Catálogo de premios con Coronas disponible pronto.')),
-                  );
-                },
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const CrownsScreen()),
+                ),
                 child: const Row(
                   children: [
                     Text(
@@ -726,84 +1033,260 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // 4.3 Explora el Menú (Categories)
   Widget _buildCategoryMenuSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: const [
-            Text(
-              'Explora el Menú',
-              style: TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.w900,
-                color: AppColors.ink,
+    return KeyedSubtree(
+      key: _menuSectionKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFE6B8),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.restaurant_menu,
+                  color: AppColors.red,
+                  size: 21,
+                ),
               ),
-            ),
-            Text(
-              'Todo a la parrilla',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.muted,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 94,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _categories.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 14),
-            itemBuilder: (context, index) {
-              final cat = _categories[index];
-              final isSelected = _selectedCategoryIndex == index;
-
-              return GestureDetector(
-                onTap: () => setState(() => _selectedCategoryIndex = index),
+              const SizedBox(width: 10),
+              const Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 58,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.red : Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: isSelected
-                                ? AppColors.red.withValues(alpha: 0.3)
-                                : Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Icon(
-                          cat['icon'] as IconData,
-                          color: isSelected ? Colors.white : AppColors.brown,
-                          size: 26,
-                        ),
+                    Text(
+                      'Explora el menú',
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.ink,
                       ),
                     ),
-                    const SizedBox(height: 6),
                     Text(
-                      cat['name'] as String,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                        color: isSelected ? AppColors.red : AppColors.ink,
-                      ),
+                      'Todo a la parrilla, hecho a tu manera',
+                      style: TextStyle(fontSize: 12, color: AppColors.muted),
                     ),
                   ],
                 ),
-              );
-            },
+              ),
+            ],
+          ),
+          const SizedBox(height: 13),
+          SizedBox(
+            height: 42,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _categories.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final category = _categories[index];
+                final isSelected = _selectedCategoryIndex == index;
+                return ChoiceChip(
+                  selected: isSelected,
+                  showCheckmark: false,
+                  avatar: Icon(
+                    category['icon'] as IconData,
+                    size: 17,
+                    color: isSelected ? Colors.white : AppColors.brown,
+                  ),
+                  label: Text(category['name'] as String),
+                  labelStyle: TextStyle(
+                    color: isSelected ? Colors.white : AppColors.brown,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  backgroundColor: Colors.white,
+                  selectedColor: AppColors.red,
+                  side: BorderSide(
+                    color: isSelected ? AppColors.red : const Color(0xFFEADFD4),
+                  ),
+                  shape: const StadiumBorder(),
+                  onSelected: (_) =>
+                      setState(() => _selectedCategoryIndex = index),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuProducts() {
+    final selectedCategory = _categories[_selectedCategoryIndex]['name'];
+    final products = _selectedCategoryIndex == 0
+        ? _menuProducts
+        : _menuProducts
+              .where((product) => product['category'] == selectedCategory)
+              .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF2DF),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.local_fire_department,
+                color: AppColors.red,
+                size: 18,
+              ),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  _selectedCategoryIndex == 0
+                      ? 'Lo más pedido'
+                      : '$selectedCategory',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ),
+              Text(
+                '${products.length} opciones',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
+        for (final product in products)
+          Card(
+            color: Colors.white,
+            margin: const EdgeInsets.only(bottom: 11),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: Color(0xFFF0E6DC)),
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => _addToCart(
+                product['name']! as String,
+                product['price']! as double,
+                description: product['description']! as String,
+                emoji: product['emoji']! as String,
+                ingredients: product['ingredients']! as List<String>,
+                extras: product['extras']! as List<String>,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 62,
+                          height: 62,
+                          decoration: BoxDecoration(
+                            color: AppColors.beige,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            product['emoji']! as String,
+                            style: const TextStyle(fontSize: 32),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product['name']! as String,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  height: 1.15,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.ink,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                product['description']! as String,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  height: 1.25,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      child: Divider(height: 1, color: Color(0xFFF0E6DC)),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.tune,
+                          size: 15,
+                          color: AppColors.brown,
+                        ),
+                        const SizedBox(width: 5),
+                        const Expanded(
+                          child: Text(
+                            'Personaliza tu pedido',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.brown,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'S/ ${(product['price']! as double).toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: AppColors.red,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(width: 9),
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                            color: AppColors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.add,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -813,7 +1296,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             const Text(
               'Ofertas de la App',
@@ -823,7 +1309,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: AppColors.ink,
               ),
             ),
-            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -839,7 +1324,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            const Spacer(),
             TextButton(
               onPressed: () {},
               child: const Text(
@@ -906,7 +1390,11 @@ class _HomeScreenState extends State<HomeScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
         boxShadow: const [
-          BoxShadow(color: Color(0x0C000000), blurRadius: 8, offset: Offset(0, 3)),
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
         ],
       ),
       child: Column(
@@ -919,20 +1407,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 115,
                 decoration: BoxDecoration(
                   color: const Color(0xFFF7EFE6),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(22),
+                  ),
                 ),
                 child: Center(
-                  child: Text(
-                    emojiIcon,
-                    style: const TextStyle(fontSize: 48),
-                  ),
+                  child: Text(emojiIcon, style: const TextStyle(fontSize: 48)),
                 ),
               ),
               Positioned(
                 top: 10,
                 left: 10,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.red,
                     borderRadius: BorderRadius.circular(10),
@@ -1011,7 +1501,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: AppColors.red,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.add, color: Colors.white, size: 22),
+                        child: const Icon(
+                          Icons.add,
+                          color: Colors.white,
+                          size: 22,
+                        ),
                       ),
                     ),
                   ],
@@ -1029,8 +1523,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          runSpacing: 4,
           children: const [
             Text(
               'Tus Favoritos Recientes',
@@ -1057,94 +1552,119 @@ class _HomeScreenState extends State<HomeScreen> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(22),
             boxShadow: const [
-              BoxShadow(color: Color(0x0C000000), blurRadius: 8, offset: Offset(0, 3)),
+              BoxShadow(
+                color: Color(0x0C000000),
+                blurRadius: 8,
+                offset: Offset(0, 3),
+              ),
             ],
           ),
-          child: Row(
+          child: Column(
             children: [
-              // Burger icon/preview
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  color: AppColors.beige,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Center(
-                  child: Text('🍔', style: TextStyle(fontSize: 36)),
-                ),
-              ),
-              const SizedBox(width: 14),
+              Row(
+                children: [
+                  // Burger icon/preview
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: AppColors.beige,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Center(
+                      child: Text('🍔', style: TextStyle(fontSize: 36)),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
 
-              // Details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                  // Details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFEDE6),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'Último pedido',
-                            style: TextStyle(
-                              color: AppColors.red,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFEDE6),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Último pedido',
+                                style: TextStyle(
+                                  color: AppColors.red,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Hace 3 días',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Whopper Clásico',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink,
                           ),
                         ),
-                        const SizedBox(width: 6),
                         const Text(
-                          'Hace 3 días',
-                          style: TextStyle(fontSize: 10, color: AppColors.muted),
+                          'Sin cebolla • Extra queso',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'S/ 21.50',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.red,
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Whopper Clásico',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    const Text(
-                      'Sin cebolla • Extra queso',
-                      style: TextStyle(fontSize: 11, color: AppColors.muted),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'S/ 21.50',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.red,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
 
-              // Reorder Button
-              ElevatedButton.icon(
-                onPressed: () => _addToCart('Whopper Clásico', 21.50),
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text(
-                  'Reordenar',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFDE8A),
-                  foregroundColor: const Color(0xFF5A3900),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton.icon(
+                  onPressed: () => _addToCart('Whopper Clásico', 21.50),
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text(
+                    'Reordenar',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFDE8A),
+                    foregroundColor: const Color(0xFF5A3900),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -1244,7 +1764,10 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             style: TextButton.styleFrom(
               foregroundColor: AppColors.red,
-              textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
             ),
             child: const Text('Cambiar'),
           ),
@@ -1253,116 +1776,212 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // 5. Bottom Navigation Bar (Matching screen.png with Floating Cart pill)
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildNavItem(0, Icons.home, 'Inicio'),
-          _buildNavItem(1, Icons.lunch_dining, 'Menú'),
-          _buildNavItem(2, Icons.local_offer, 'Cupones', badge: '6'),
-          _buildNavItem(3, Icons.workspace_premium, 'Coronas'),
+  void _selectNavigation(int index) {
+    setState(() => _navBarIndex = index);
+    switch (index) {
+      case 0:
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final menuContext = _menuSectionKey.currentContext;
+          if (menuContext != null) {
+            Scrollable.ensureVisible(
+              menuContext,
+              duration: const Duration(milliseconds: 350),
+              alignment: 0.1,
+            );
+          }
+        });
+        break;
+      case 1:
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const CrownsScreen()));
+        break;
+      case 2:
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const PromotionsScreen()),
+        );
+        break;
+      case 3:
+        _openCart();
+        break;
+      case 4:
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                ProfileScreen(accountService: widget.accountService),
+          ),
+        );
+        break;
+    }
+  }
+}
 
-          // Floating Cart pill button
-          GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: AppColors.red,
-                  content: Text(
-                    _cartItemCount == 0
-                        ? 'Tu carrito está vacío. Agrega una deliciosa Whopper.'
-                        : 'Tienes $_cartItemCount productos por S/ ${_cartTotal.toStringAsFixed(2)}',
+class _ProductDetailsSheet extends StatefulWidget {
+  const _ProductDetailsSheet({
+    required this.name,
+    required this.description,
+    required this.emoji,
+    required this.price,
+    required this.ingredients,
+    required this.extras,
+  });
+
+  final String name;
+  final String description;
+  final String emoji;
+  final double price;
+  final List<String> ingredients;
+  final List<String> extras;
+
+  @override
+  State<_ProductDetailsSheet> createState() => _ProductDetailsSheetState();
+}
+
+class _ProductDetailsSheetState extends State<_ProductDetailsSheet> {
+  final Set<String> _removedIngredients = {};
+  final Set<String> _selectedExtras = {};
+
+  double get _totalPrice =>
+      widget.price +
+      _selectedExtras.fold<double>(
+        0,
+        (total, extra) => total + _extraPrice(extra),
+      );
+
+  double _extraPrice(String extra) {
+    if (extra.toLowerCase().contains('queso')) return 3;
+    if (extra.toLowerCase().contains('tocino')) return 4;
+    if (extra.toLowerCase().contains('salsa')) return 1;
+    return 0;
+  }
+
+  CartItem _buildCartItem() {
+    final removed = _removedIngredients.toList()..sort();
+    final extras = _selectedExtras.toList()..sort();
+    final configuration = [...removed.map((item) => 'sin-$item'), ...extras];
+    final baseId = widget.name
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-|-$'), '');
+    final id = [baseId, ...configuration].join('-');
+    return CartItem(
+      id: id,
+      name: widget.name,
+      unitPrice: _totalPrice,
+      quantity: 1,
+      removedIngredients: removed,
+      extras: extras,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.88,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: Material(
+              color: Colors.transparent,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                children: [
+                  Row(
+                    children: [
+                      Text(widget.emoji, style: const TextStyle(fontSize: 46)),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          widget.name,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Cerrar',
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
                   ),
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF8A1700),
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                  const SizedBox(height: 8),
+                  Text(widget.description),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Quita lo que no te gusta',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  ),
+                  for (final ingredient in widget.ingredients)
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: !_removedIngredients.contains(ingredient),
+                      title: Text(ingredient),
+                      subtitle: const Text('Incluido'),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      onChanged: (included) => setState(() {
+                        if (included == true) {
+                          _removedIngredients.remove(ingredient);
+                        } else {
+                          _removedIngredients.add(ingredient);
+                        }
+                      }),
+                    ),
+                  if (widget.extras.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Personaliza con extras',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    ),
+                    for (final extra in widget.extras)
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: _selectedExtras.contains(extra),
+                        title: Text(extra),
+                        subtitle: Text(
+                          _extraPrice(extra) == 0
+                              ? 'Sin costo adicional'
+                              : '+ S/ ${_extraPrice(extra).toStringAsFixed(2)}',
+                        ),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        onChanged: (selected) => setState(() {
+                          if (selected == true) {
+                            _selectedExtras.add(extra);
+                          } else {
+                            _selectedExtras.remove(extra);
+                          }
+                        }),
+                      ),
+                  ],
                 ],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    'S/ ${_cartTotal.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.of(
+                  context,
+                  rootNavigator: true,
+                ).pop(_buildCartItem()),
+                child: Text('Agregar · S/ ${_totalPrice.toStringAsFixed(2)}'),
               ),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData icon, String label, {String? badge}) {
-    final isSelected = _navBarIndex == index;
-    return InkWell(
-      onTap: () => setState(() => _navBarIndex = index),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(
-                  icon,
-                  size: 24,
-                  color: isSelected ? AppColors.red : AppColors.muted,
-                ),
-                if (badge != null)
-                  Positioned(
-                    top: -4,
-                    right: -6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: AppColors.red,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        badge,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                color: isSelected ? AppColors.red : AppColors.muted,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+    ),
+  );
 }

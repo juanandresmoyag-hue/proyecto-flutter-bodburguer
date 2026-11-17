@@ -1,0 +1,64 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owns(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow get: if owns(userId);
+      allow list, delete: if false;
+      allow create: if owns(userId)
+        && request.resource.data.keys().hasOnly([
+          'name', 'email', 'phone', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'name', 'email', 'phone', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.email is string
+        && request.resource.data.phone is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      allow update: if owns(userId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['name', 'phone', 'updatedAt'])
+        && request.resource.data.updatedAt is timestamp;
+
+      match /loginEvents/{eventId} {
+        allow get, list: if owns(userId);
+        allow create: if owns(userId)
+          && request.resource.data.keys().hasOnly([
+            'event', 'method', 'createdAt'
+          ])
+          && request.resource.data.keys().hasAll([
+            'event', 'method', 'createdAt'
+          ])
+          && request.resource.data.event in ['account_created', 'sign_in']
+          && request.resource.data.method == 'email_password'
+          && request.resource.data.createdAt is timestamp;
+        allow update, delete: if false;
+      }
+
+      match /orders/{orderId} {
+        allow get, list: if owns(userId);
+        allow create: if owns(userId)
+          && request.resource.data.keys().hasOnly([
+            'status', 'items', 'total', 'createdAt'
+          ])
+          && request.resource.data.keys().hasAll([
+            'status', 'items', 'total', 'createdAt'
+          ])
+          && request.resource.data.status == 'received'
+          && request.resource.data.items is list
+          && request.resource.data.items.size() > 0
+          && request.resource.data.items.size() <= 30
+          && request.resource.data.total is number
+          && request.resource.data.total > 0
+          && request.resource.data.createdAt is timestamp;
+        allow update, delete: if false;
+      }
+    }
+  }
+}
